@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -96,7 +97,7 @@ func (c *Client) CreateAdapterDeployment(namespace string, adapter models.Adapte
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  adapter.Type + "-adapter",
+							Name:  strings.ToLower(adapter.Type) + "-adapter",
 							Image: image,
 							Ports: ports,
 							Env:   env,
