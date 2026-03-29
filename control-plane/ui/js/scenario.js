@@ -2,6 +2,7 @@
 
 let currentScenario = null;
 let adapterTypesByName = {};
+let pollInterval = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
@@ -36,11 +37,22 @@ async function loadScenario(scenarioId) {
             adapterTypesByName[adapter.id] = adapter.type;
         });
 
-        // Poll for updates every 3 seconds
-        setInterval(() => loadScenario(scenarioId), 3000);
+        // Poll for updates every 3 seconds (only create interval once)
+        if (!pollInterval) {
+            pollInterval = setInterval(() => refreshScenario(scenarioId), 3000);
+        }
     } catch (error) {
         console.error('Failed to load scenario:', error);
         alert(`Failed to load scenario: ${error.message}`);
+    }
+}
+
+async function refreshScenario(scenarioId) {
+    try {
+        const scenario = await api.getScenario(scenarioId);
+        displayScenario(scenario);
+    } catch (error) {
+        console.error('Failed to refresh scenario:', error);
     }
 }
 
@@ -267,6 +279,9 @@ async function deleteScenarioConfirm() {
     }
 
     try {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
         await api.deleteScenario(currentScenario.id);
         window.location.href = '/';
     } catch (error) {
