@@ -210,16 +210,14 @@ func parseQuantity(s string) resource.Quantity {
 }
 
 func getAdapterImage(adapterType string) string {
-	// These will be pushed to a registry (Docker Hub, GitHub CR, etc.)
-	// For now, use a placeholder that will be updated during deployment
 	switch adapterType {
 	case "REST":
-		return "kymaadapterstub/rest-adapter:latest"
+		return "ghcr.io/achgithub/kymaadapterstub-rest-adapter:latest"
 	case "SFTP":
-		return "kymaadapterstub/sftp-adapter:latest"
+		return "ghcr.io/achgithub/kymaadapterstub-sftp-adapter:latest"
 	case "OData":
-		return "kymaadapterstub/odata-adapter:latest"
+		return "ghcr.io/achgithub/kymaadapterstub-odata-adapter:latest"
 	default:
-		return "kymaadapterstub/rest-adapter:latest"
+		return "ghcr.io/achgithub/kymaadapterstub-rest-adapter:latest"
 	}
 }

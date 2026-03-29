@@ -58,7 +58,7 @@ spec:
       serviceAccountName: control-plane
       containers:
       - name: control-plane
-        image: kymaadapterstub/control-plane:latest
+        image: ghcr.io/achgithub/kymaadapterstub-control-plane:latest
         imagePullPolicy: Always
         ports:
         - name: http
