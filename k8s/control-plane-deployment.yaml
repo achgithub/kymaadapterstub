@@ -117,10 +117,11 @@ metadata:
   name: control-plane
   namespace: default
 spec:
-  host: control-plane.c-6b6fad5.kyma.ondemand.com
-  service:
+  targetRef:
+    group: ""
+    kind: Service
     name: control-plane
-    port: 8080
+  host: control-plane.c-6b6fad5.kyma.ondemand.com
   rules:
   - path: /.*
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
