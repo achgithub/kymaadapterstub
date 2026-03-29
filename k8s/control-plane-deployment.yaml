@@ -124,6 +124,6 @@ spec:
     name: control-plane
     port: 8080
   rules:
-  - path: /**
+  - path: /{**}
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     noAuth: true
