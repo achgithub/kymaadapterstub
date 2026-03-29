@@ -125,4 +125,4 @@ spec:
     host: control-plane
     name: control-plane
     port: 8080
-  host: control-plane.{{ .Values.kymaClusterDomain }}
+  host: control-plane.c-6b6fad5.kyma.ondemand.com
