@@ -6,10 +6,10 @@ WORKDIR /app
 RUN apk add --no-cache git
 
 # Copy go mod files
-COPY go.mod go.sum ./
+COPY go.mod go.* ./
 
 # Download dependencies
-RUN go mod download
+RUN go mod download || true
 
 # Copy source code
 COPY . .
