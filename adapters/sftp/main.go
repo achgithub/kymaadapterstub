@@ -145,8 +145,11 @@ func handleChannel(channel ssh.Channel, requests <-chan *ssh.Request, config *Ad
 
 			// Create SFTP server
 			files := convertFilesToMemory(config.Files)
-			server := sftp.NewRequestServer(channel, &SFTPHandler{
-				files: files,
+			server := sftp.NewRequestServer(channel, sftp.Handlers{
+				FileGet:  &SFTPHandler{files: files},
+				FilePut:  &SFTPHandler{files: files},
+				FileList: &SFTPHandler{files: files},
+				FileCmd:  &SFTPHandler{files: files},
 			})
 
 			if err := server.Serve(); err != nil && err != io.EOF {
@@ -182,7 +185,7 @@ type SFTPHandler struct {
 }
 
 func (h *SFTPHandler) Fileread(r *sftp.Request) (io.ReaderAt, error) {
-	file, exists := h.files[r.Filepath()]
+	file, exists := h.files[r.Filepath]
 	if !exists {
 		return nil, sftp.ErrSSHFxNoSuchFile
 	}
@@ -191,7 +194,7 @@ func (h *SFTPHandler) Fileread(r *sftp.Request) (io.ReaderAt, error) {
 }
 
 func (h *SFTPHandler) Filelist(r *sftp.Request) (sftp.ListerAt, error) {
-	path := r.Filepath()
+	path := r.Filepath
 	if path == "/" || path == "" {
 		return &fileLister{files: h.files}, nil
 	}
@@ -242,7 +245,6 @@ func (f *fileReader) ReadAt(p []byte, off int64) (int, error) {
 
 type fileLister struct {
 	files map[string]*InMemoryFile
-	index int
 }
 
 func (f *fileLister) ListAt(ls []os.FileInfo, offset int64) (int, error) {
