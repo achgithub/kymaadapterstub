@@ -116,7 +116,7 @@ func handleConnection(conn net.Conn, sshConfig *ssh.ServerConfig, config *Adapte
 	}
 	defer sshConn.Close()
 
-	log.Printf("SSH login attempt from %s as %s", sshConn.RemoteAddr(), sshConn.User())
+	log.Printf("SSH login from %s as %s", sshConn.RemoteAddr(), sshConn.User())
 
 	go ssh.DiscardRequests(reqs)
 
@@ -143,9 +143,10 @@ func handleChannel(channel ssh.Channel, requests <-chan *ssh.Request, config *Ad
 		if req.Type == "subsystem" && string(req.Payload[4:]) == "sftp" {
 			req.Reply(true, nil)
 
-			// Start SFTP server
+			// Create SFTP server
+			files := convertFilesToMemory(config.Files)
 			server := sftp.NewRequestServer(channel, &SFTPHandler{
-				files: convertFilesToMemory(config.Files),
+				files: files,
 			})
 
 			if err := server.Serve(); err != nil && err != io.EOF {
@@ -181,7 +182,7 @@ type SFTPHandler struct {
 }
 
 func (h *SFTPHandler) Fileread(r *sftp.Request) (io.ReaderAt, error) {
-	file, exists := h.files[r.Filename]
+	file, exists := h.files[r.Filepath()]
 	if !exists {
 		return nil, sftp.ErrSSHFxNoSuchFile
 	}
@@ -190,7 +191,17 @@ func (h *SFTPHandler) Fileread(r *sftp.Request) (io.ReaderAt, error) {
 }
 
 func (h *SFTPHandler) Filelist(r *sftp.Request) (sftp.ListerAt, error) {
-	return &fileLister{files: h.files}, nil
+	path := r.Filepath()
+	if path == "/" || path == "" {
+		return &fileLister{files: h.files}, nil
+	}
+
+	// Return the single file if requested
+	if f, exists := h.files[path]; exists {
+		return &fileLister{files: map[string]*InMemoryFile{path: f}}, nil
+	}
+
+	return nil, sftp.ErrSSHFxNoSuchFile
 }
 
 func (h *SFTPHandler) Filewrite(r *sftp.Request) (io.WriterAt, error) {
@@ -212,15 +223,6 @@ func (h *SFTPHandler) Filecmd(r *sftp.Request) error {
 	}
 }
 
-func (h *SFTPHandler) Stat(r *sftp.Request) (sftp.ListerAt, error) {
-	file, exists := h.files[r.Filename]
-	if !exists {
-		return nil, sftp.ErrSSHFxNoSuchFile
-	}
-
-	return &fileLister{files: map[string]*InMemoryFile{r.Filename: file}}, nil
-}
-
 type fileReader struct {
 	data []byte
 }
@@ -240,34 +242,37 @@ func (f *fileReader) ReadAt(p []byte, off int64) (int, error) {
 
 type fileLister struct {
 	files map[string]*InMemoryFile
+	index int
 }
 
-func (f *fileLister) ListAt(ls []sftp.FileInfo, offset int64) (int, error) {
-	i := int(offset)
+func (f *fileLister) ListAt(ls []os.FileInfo, offset int64) (int, error) {
 	fileList := make([]*InMemoryFile, 0, len(f.files))
 	for _, file := range f.files {
 		fileList = append(fileList, file)
 	}
 
-	if i >= len(fileList) {
+	idx := int(offset)
+	if idx >= len(fileList) {
 		return 0, io.EOF
 	}
 
-	for i < len(fileList) && i < len(ls)+int(offset) {
-		file := fileList[i]
-		ls[i-int(offset)] = &fileInfo{
+	count := 0
+	for idx < len(fileList) && count < len(ls) {
+		file := fileList[idx]
+		ls[count] = &fileInfo{
 			name:    file.name,
 			size:    file.size,
 			modTime: file.modTime,
 		}
-		i++
+		idx++
+		count++
 	}
 
-	if i >= len(fileList) {
-		return i - int(offset), io.EOF
+	if idx >= len(fileList) {
+		return count, io.EOF
 	}
 
-	return i - int(offset), nil
+	return count, nil
 }
 
 type fileInfo struct {
