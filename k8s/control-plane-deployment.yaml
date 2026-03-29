@@ -117,8 +117,9 @@ metadata:
   name: control-plane
   namespace: default
 spec:
+  gateway: kyma-gateway
   hosts:
-  - name: control-plane.c-6b6fad5.kyma.ondemand.com
+  - control-plane.c-6b6fad5.kyma.ondemand.com
   service:
     name: control-plane
     port: 8080
