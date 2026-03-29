@@ -56,6 +56,8 @@ spec:
         app: control-plane
     spec:
       serviceAccountName: control-plane
+      imagePullSecrets:
+      - name: ghcr-secret
       containers:
       - name: control-plane
         image: ghcr.io/achgithub/kymaadapterstub-control-plane:latest
