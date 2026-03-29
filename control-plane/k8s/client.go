@@ -7,7 +7,9 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery.io/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -136,7 +138,7 @@ func (c *Client) CreateAdapterService(namespace string, adapter models.Adapter) 
 		{
 			Name:       "http",
 			Port:       80,
-			TargetPort: intstr(8080),
+			TargetPort: intOrString(8080),
 			Protocol:   corev1.ProtocolTCP,
 		},
 	}
@@ -145,7 +147,7 @@ func (c *Client) CreateAdapterService(namespace string, adapter models.Adapter) 
 		servicePorts = append(servicePorts, corev1.ServicePort{
 			Name:       "sftp",
 			Port:       22,
-			TargetPort: intstr(22),
+			TargetPort: intOrString(22),
 			Protocol:   corev1.ProtocolTCP,
 		})
 	}
@@ -198,12 +200,12 @@ func int32Ptr(i int32) *int32 {
 	return &i
 }
 
-func intstr(i int32) metav1.IntOrString {
-	return metav1.FromInt32(i)
+func intOrString(i int32) intstr.IntOrString {
+	return intstr.FromInt32(i)
 }
 
-func parseQuantity(s string) corev1.ResourceQuantity {
-	q, _ := corev1.ParseQuantity(s)
+func parseQuantity(s string) resource.Quantity {
+	q, _ := resource.ParseQuantity(s)
 	return q
 }
 
