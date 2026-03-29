@@ -1,0 +1,128 @@
+---
+# ServiceAccount for Control Plane
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: control-plane
+  namespace: default
+
+---
+# ClusterRole for Control Plane (to manage Deployments and Services)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: control-plane
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+- apiGroups: ["gateway.kyma-project.io"]
+  resources: ["apirules"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: control-plane
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: control-plane
+subjects:
+- kind: ServiceAccount
+  name: control-plane
+  namespace: default
+
+---
+# Control Plane Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-plane
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: control-plane
+  template:
+    metadata:
+      labels:
+        app: control-plane
+    spec:
+      serviceAccountName: control-plane
+      containers:
+      - name: control-plane
+        image: kymaadapterstub/control-plane:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+        env:
+        - name: KYMA_NAMESPACE
+          value: default
+        - name: CONTROL_PLANE_URL
+          value: "http://control-plane:8080"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+# Control Plane Service (ClusterIP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: control-plane
+  namespace: default
+  labels:
+    app: control-plane
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: http
+    name: http
+  selector:
+    app: control-plane
+
+---
+# Control Plane APIRule (for Kyma)
+# This creates an HTTPS endpoint for the Control Plane UI and API
+apiVersion: gateway.kyma-project.io/v1beta1
+kind: APIRule
+metadata:
+  name: control-plane
+  namespace: default
+spec:
+  gateway: kyma-gateway
+  rules:
+  - path: /.*
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    accessStrategies:
+    - handler: noop
+  service:
+    host: control-plane
+    name: control-plane
+    port: 8080
+  host: control-plane.{{ .Values.kymaClusterDomain }}

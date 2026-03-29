@@ -1,0 +1,63 @@
+---
+# SFTP Adapter Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sftp-adapter
+  namespace: adapters
+  labels:
+    app: sftp-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sftp-adapter
+  template:
+    metadata:
+      labels:
+        app: sftp-adapter
+    spec:
+      containers:
+      - name: sftp
+        image: atmoz/sftp:latest
+        ports:
+        - containerPort: 22
+          name: sftp
+        # atmoz/sftp expects SFTP_USERS environment variable
+        # Format: username:password:uid:guid:dir
+        env:
+        - name: SFTP_USERS
+          value: "foo:pass:1000:1000:/home/foo"
+        volumeMounts:
+        - name: sftp-storage
+          mountPath: /home/foo
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+      volumes:
+      - name: sftp-storage
+        emptyDir: {}
+
+---
+# SFTP Service - NodePort to expose externally
+apiVersion: v1
+kind: Service
+metadata:
+  name: sftp-service
+  namespace: adapters
+  labels:
+    app: sftp-adapter
+spec:
+  type: NodePort
+  ports:
+  - port: 22
+    targetPort: 22
+    nodePort: 30222
+    protocol: TCP
+    name: sftp
+  selector:
+    app: sftp-adapter

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scenario - Kyma Adapter Stub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">🔧 Kyma Adapter Stub</a>
+            <span class="navbar-text text-light">Control Plane</span>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="mb-4">
+            <a href="/" class="btn btn-outline-secondary">← Back to Scenarios</a>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h2 id="scenarioName" class="mb-0">Loading...</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p><strong>Status:</strong> <span id="scenarioStatus" class="badge bg-secondary">Unknown</span></p>
+                                <p><strong>Created:</strong> <span id="scenarioCreated">-</span></p>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button class="btn btn-success" id="launchBtn" style="display:none;">🚀 Launch All Adapters</button>
+                                <button class="btn btn-danger" id="deleteBtn">🗑️ Delete Scenario</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Adapters</h5>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newAdapterModal">
+                            + Add Adapter
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="adaptersList" style="display:none;">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th>URL</th>
+                                            <th>Behavior</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adaptersTableBody">
+                                        <!-- Adapters will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="noAdapters" class="text-muted text-center py-3">
+                            No adapters yet. Add one to get started.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card bg-light">
+                    <div class="card-header">
+                        <h5 class="mb-0">Quick Reference</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-sm"><strong>Quick Start:</strong></p>
+                        <ol class="text-sm">
+                            <li>Add adapters with desired behavior</li>
+                            <li>Click "Launch All Adapters"</li>
+                            <li>Copy URLs from the table</li>
+                            <li>Configure CPI with these URLs</li>
+                        </ol>
+
+                        <hr>
+
+                        <p class="text-sm"><strong>Adapter Types:</strong></p>
+                        <ul class="text-sm">
+                            <li><strong>REST:</strong> HTTP/HTTPS endpoint with configurable status codes and responses</li>
+                            <li><strong>SFTP:</strong> SFTP server with files and authentication control</li>
+                            <li><strong>OData:</strong> OData service endpoint</li>
+                        </ul>
+
+                        <hr>
+
+                        <p class="text-sm"><strong>Behavior Modes:</strong></p>
+                        <ul class="text-sm">
+                            <li><strong>Success:</strong> Return configured success response</li>
+                            <li><strong>Failure:</strong> Return configured error response</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Adapter Modal -->
+    <div class="modal fade" id="newAdapterModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Adapter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="adapterName" class="form-label">Adapter Name <small>(becomes hostname)</small></label>
+                        <input type="text" class="form-control" id="adapterName" placeholder="e.g., payment-service">
+                        <small class="form-text text-muted">Example URL: https://payment-service.kyma.cluster.sap</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="adapterType" class="form-label">Type</label>
+                        <select class="form-select" id="adapterType">
+                            <option value="">Select type...</option>
+                            <option value="REST">REST (HTTP/HTTPS)</option>
+                            <option value="SFTP">SFTP (File Transfer)</option>
+                            <option value="OData">OData</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="behaviorMode" class="form-label">Behavior</label>
+                        <select class="form-select" id="behaviorMode">
+                            <option value="success">Success (Happy Path)</option>
+                            <option value="failure">Failure (Error Handling)</option>
+                        </select>
+                    </div>
+
+                    <!-- REST Adapter Config -->
+                    <div id="restConfig" style="display:none;">
+                        <h6>REST Configuration</h6>
+                        <div class="mb-3">
+                            <label for="restStatusCode" class="form-label">Status Code</label>
+                            <input type="number" class="form-control" id="restStatusCode" value="200">
+                        </div>
+                        <div class="mb-3">
+                            <label for="restBody" class="form-label">Response Body (JSON)</label>
+                            <textarea class="form-control" id="restBody" rows="4" placeholder='{"status": "ok"}'></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="restHeaders" class="form-label">Headers (JSON)</label>
+                            <textarea class="form-control" id="restHeaders" rows="2" placeholder='{"Content-Type": "application/json"}'></textarea>
+                        </div>
+                    </div>
+
+                    <!-- SFTP Adapter Config -->
+                    <div id="sftpConfig" style="display:none;">
+                        <h6>SFTP Configuration</h6>
+                        <div class="mb-3">
+                            <label for="sftpUsername" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="sftpUsername" value="testuser">
+                        </div>
+                        <div class="mb-3">
+                            <label for="sftpPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="sftpPassword" value="testpass">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Files</label>
+                            <div id="filesList"></div>
+                            <button type="button" class="btn btn-sm btn-secondary mt-2" id="addFileBtn">+ Add File</button>
+                        </div>
+                    </div>
+
+                    <!-- OData Adapter Config -->
+                    <div id="odataConfig" style="display:none;">
+                        <h6>OData Configuration</h6>
+                        <div class="mb-3">
+                            <label for="odataStatusCode" class="form-label">Status Code</label>
+                            <input type="number" class="form-control" id="odataStatusCode" value="200">
+                        </div>
+                        <div class="mb-3">
+                            <label for="odataBody" class="form-label">Response Body (XML)</label>
+                            <textarea class="form-control" id="odataBody" rows="4" placeholder="<feed>...</feed>"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="createAdapterBtn">Create Adapter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Adapter Modal -->
+    <div class="modal fade" id="editAdapterModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Adapter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editAdapterId">
+                    <div class="mb-3">
+                        <label for="editBehaviorMode" class="form-label">Behavior</label>
+                        <select class="form-select" id="editBehaviorMode">
+                            <option value="success">Success</option>
+                            <option value="failure">Failure</option>
+                        </select>
+                    </div>
+
+                    <!-- Config sections will be populated based on adapter type -->
+                    <div id="editConfigContainer"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="updateAdapterBtn">Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/scenario.js"></script>
+</body>
+</html>

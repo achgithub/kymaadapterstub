@@ -1,0 +1,164 @@
+---
+# REST Adapter Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rest-adapter
+  namespace: adapters
+  labels:
+    app: rest-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rest-adapter
+  template:
+    metadata:
+      labels:
+        app: rest-adapter
+    spec:
+      containers:
+      - name: rest-adapter
+        image: node:20-alpine
+        command:
+          - node
+          - /app/server.js
+        ports:
+        - containerPort: 3000
+          name: http
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+      volumes:
+      - name: app-code
+        configMap:
+          name: rest-adapter-code
+          defaultMode: 0755
+
+---
+# ConfigMap with the REST adapter code
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rest-adapter-code
+  namespace: adapters
+data:
+  server.js: |
+    const http = require('http');
+    const url = require('url');
+
+    const server = http.createServer((req, res) => {
+      const parsedUrl = url.parse(req.url, true);
+      const pathname = parsedUrl.pathname;
+
+      // Set CORS and JSON headers
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      // Handle OPTIONS for CORS preflight
+      if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+      }
+
+      // Health check endpoint
+      if (pathname === '/health' && req.method === 'GET') {
+        res.writeHead(200);
+        res.end(JSON.stringify({ status: 'ok' }));
+        return;
+      }
+
+      // Collect request body for POST requests
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', () => {
+          try {
+            const data = body ? JSON.parse(body) : {};
+
+            // Mock process endpoint
+            if (pathname === '/process') {
+              console.log(`Processing file: ${data.filename}`);
+              res.writeHead(200);
+              res.end(JSON.stringify({
+                status: 'processed',
+                filename: data.filename,
+                originalLength: data.content ? data.content.length : 0,
+                processedLength: data.content ? data.content.length * 2 : 0,
+                timestamp: new Date().toISOString()
+              }));
+              return;
+            }
+
+            // Mock echo endpoint
+            if (pathname === '/echo') {
+              console.log('Echo request:', data);
+              res.writeHead(200);
+              res.end(JSON.stringify({
+                echo: data,
+                timestamp: new Date().toISOString()
+              }));
+              return;
+            }
+
+            // Mock transform endpoint
+            if (pathname === '/transform') {
+              const transformed = typeof data.data === 'string'
+                ? data.data.toUpperCase()
+                : JSON.stringify(data.data);
+              res.writeHead(200);
+              res.end(JSON.stringify({
+                original: data.data,
+                transformed: transformed,
+                timestamp: new Date().toISOString()
+              }));
+              return;
+            }
+
+            // 404 for unknown endpoint
+            res.writeHead(404);
+            res.end(JSON.stringify({ error: 'Endpoint not found' }));
+          } catch (e) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Invalid JSON' }));
+          }
+        });
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Endpoint not found' }));
+      }
+    });
+
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+      console.log(`REST adapter listening on port ${PORT}`);
+    });
+
+---
+# REST Service - ClusterIP (internal) and optional Ingress
+apiVersion: v1
+kind: Service
+metadata:
+  name: rest-adapter-service
+  namespace: adapters
+  labels:
+    app: rest-adapter
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: rest-adapter
