@@ -372,7 +372,7 @@ func (h *Handler) handleLaunchScenario(w http.ResponseWriter, r *http.Request, s
 
 		// Update local scenario reference
 		scenario.Adapters[i].Status = "running"
-		scenario.Adapters[i].IngressURL = serviceDNS
+		scenario.Adapters[i].IngressURL = adapterURL
 	}
 
 	h.store.UpdateScenarioStatus(scenarioID, "running")
