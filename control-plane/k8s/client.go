@@ -255,6 +255,11 @@ func (c *Client) CreateAdapterAPIRule(namespace string, adapter models.Adapter) 
 			"metadata": map[string]interface{}{
 				"name":      adapter.Name,
 				"namespace": namespace,
+				"labels": map[string]interface{}{
+					"app":          "adapter",
+					"adapter-id":   adapter.ID,
+					"adapter-type": adapter.Type,
+				},
 			},
 			"spec": map[string]interface{}{
 				"gateway": "kyma-system/kyma-gateway",
