@@ -113,6 +113,14 @@ func (c *Client) CreateAdapterDeployment(namespace string, adapter models.Adapte
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
+					Annotations: func() map[string]string {
+						if adapter.Type == "SFTP" {
+							return map[string]string{
+								"traffic.istio.io/excludeInboundPorts": "22",
+							}
+						}
+						return nil
+					}(),
 				},
 				Spec: corev1.PodSpec{
 					ImagePullSecrets: []corev1.LocalObjectReference{
