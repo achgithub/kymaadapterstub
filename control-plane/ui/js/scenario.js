@@ -22,7 +22,8 @@ function setupEventListeners() {
     document.getElementById('adapterType').addEventListener('change', updateConfigSections);
     document.getElementById('createAdapterBtn').addEventListener('click', createAdapter);
     document.getElementById('launchBtn').addEventListener('click', launchScenario);
-    document.getElementById('stopBtn').addEventListener('click', stopScenario);
+    const stopBtnEl = document.getElementById('stopBtn');
+    if (stopBtnEl) stopBtnEl.addEventListener('click', stopScenario);
     document.getElementById('deleteBtn').addEventListener('click', deleteScenarioConfirm);
     document.getElementById('updateAdapterBtn').addEventListener('click', updateAdapter);
     document.getElementById('addFileBtn').addEventListener('click', addFileInput);
@@ -66,8 +67,8 @@ function displayScenario(scenario) {
     // Show launch/stop buttons based on status
     const launchBtn = document.getElementById('launchBtn');
     const stopBtn = document.getElementById('stopBtn');
-    launchBtn.style.display = scenario.status === 'stopped' ? 'inline-block' : 'none';
-    stopBtn.style.display = scenario.status === 'running' ? 'inline-block' : 'none';
+    if (launchBtn) launchBtn.style.display = scenario.status === 'stopped' ? 'inline-block' : 'none';
+    if (stopBtn) stopBtn.style.display = scenario.status === 'running' ? 'inline-block' : 'none';
 
     // Display adapters
     if (scenario.adapters.length === 0) {
