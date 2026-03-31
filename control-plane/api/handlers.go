@@ -457,12 +457,16 @@ func (h *Handler) HandleAdapterConfig(w http.ResponseWriter, r *http.Request) {
 			if adapter.ID == adapterID {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{
-					"id":             adapter.ID,
-					"name":           adapter.Name,
-					"type":           adapter.Type,
-					"behavior_mode":  adapter.BehaviorMode,
-					"config":         adapter.Config,
-					"credentials":    adapter.Credentials,
+					"id":               adapter.ID,
+					"name":             adapter.Name,
+					"type":             adapter.Type,
+					"behavior_mode":    adapter.BehaviorMode,
+					"status_code":      adapter.Config.StatusCode,
+					"response_body":    adapter.Config.ResponseBody,
+					"response_headers": adapter.Config.ResponseHeaders,
+					"files":            adapter.Config.Files,
+					"auth_mode":        adapter.Config.AuthMode,
+					"credentials":      adapter.Credentials,
 				})
 				return
 			}
