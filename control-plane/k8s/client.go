@@ -116,7 +116,7 @@ func (c *Client) CreateAdapterDeployment(namespace string, adapter models.Adapte
 					Annotations: func() map[string]string {
 						if adapter.Type == "SFTP" {
 							return map[string]string{
-								"traffic.istio.io/excludeInboundPorts": "22",
+								"traffic.sidecar.istio.io/excludeInboundPorts": "22",
 							}
 						}
 						return nil
