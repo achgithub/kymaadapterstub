@@ -354,16 +354,27 @@ func (h *Handler) handleLaunchScenario(w http.ResponseWriter, r *http.Request, s
 			continue
 		}
 
-		// Create APIRule for public access (REST/OData only)
-		publicURL, err := h.k8sClient.CreateAdapterAPIRule(h.namespace, adapter)
-		if err != nil {
-			log.Printf("Error creating APIRule for adapter %s: %v", adapter.ID, err)
-		}
+		var adapterURL string
 
-		// Use public URL if available, otherwise fall back to internal DNS
-		adapterURL := publicURL
-		if adapterURL == "" {
-			adapterURL = fmt.Sprintf("%s.%s.svc.cluster.local", adapter.Name, h.namespace)
+		if adapter.Type == "SFTP" {
+			// Wait for LoadBalancer external hostname
+			hostname, err := h.k8sClient.GetLoadBalancerHostname(h.namespace, adapter.Name)
+			if err != nil {
+				log.Printf("Warning: could not get LoadBalancer hostname for %s: %v", adapter.Name, err)
+				adapterURL = fmt.Sprintf("%s.%s.svc.cluster.local", adapter.Name, h.namespace)
+			} else {
+				adapterURL = fmt.Sprintf("%s:22", hostname)
+			}
+		} else {
+			// Create APIRule for public access (REST/OData)
+			publicURL, err := h.k8sClient.CreateAdapterAPIRule(h.namespace, adapter)
+			if err != nil {
+				log.Printf("Error creating APIRule for adapter %s: %v", adapter.ID, err)
+			}
+			adapterURL = publicURL
+			if adapterURL == "" {
+				adapterURL = fmt.Sprintf("%s.%s.svc.cluster.local", adapter.Name, h.namespace)
+			}
 		}
 
 		// Update adapter status and ingress URL

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -157,22 +158,31 @@ func (c *Client) CreateAdapterService(namespace string, adapter models.Adapter) 
 		"adapter-type": adapter.Type,
 	}
 
-	servicePorts := []corev1.ServicePort{
-		{
-			Name:       "http",
-			Port:       80,
-			TargetPort: intOrString(8080),
-			Protocol:   corev1.ProtocolTCP,
-		},
-	}
+	var servicePorts []corev1.ServicePort
+	var serviceType corev1.ServiceType
 
 	if adapter.Type == "SFTP" {
-		servicePorts = append(servicePorts, corev1.ServicePort{
-			Name:       "sftp",
-			Port:       22,
-			TargetPort: intOrString(22),
-			Protocol:   corev1.ProtocolTCP,
-		})
+		// SFTP needs a LoadBalancer for external SSH access
+		serviceType = corev1.ServiceTypeLoadBalancer
+		servicePorts = []corev1.ServicePort{
+			{
+				Name:       "sftp",
+				Port:       22,
+				TargetPort: intOrString(22),
+				Protocol:   corev1.ProtocolTCP,
+			},
+		}
+	} else {
+		// REST/OData use ClusterIP — external access via APIRule
+		serviceType = corev1.ServiceTypeClusterIP
+		servicePorts = []corev1.ServicePort{
+			{
+				Name:       "http",
+				Port:       80,
+				TargetPort: intOrString(8080),
+				Protocol:   corev1.ProtocolTCP,
+			},
+		}
 	}
 
 	service := &corev1.Service{
@@ -182,7 +192,7 @@ func (c *Client) CreateAdapterService(namespace string, adapter models.Adapter) 
 			Labels:    labels,
 		},
 		Spec: corev1.ServiceSpec{
-			Type:     corev1.ServiceTypeClusterIP,
+			Type:     serviceType,
 			Selector: labels,
 			Ports:    servicePorts,
 		},
@@ -193,11 +203,32 @@ func (c *Client) CreateAdapterService(namespace string, adapter models.Adapter) 
 		return "", fmt.Errorf("failed to create service: %w", err)
 	}
 
-	log.Printf("Created service %s in namespace %s", adapter.Name, namespace)
+	log.Printf("Created %s service %s in namespace %s", serviceType, adapter.Name, namespace)
+	return "", nil
+}
 
-	// Service DNS name in Kubernetes
-	serviceDNS := fmt.Sprintf("%s.%s.svc.cluster.local", adapter.Name, namespace)
-	return serviceDNS, nil
+// GetLoadBalancerHostname waits for a LoadBalancer service to get an external hostname
+func (c *Client) GetLoadBalancerHostname(namespace, serviceName string) (string, error) {
+	for i := 0; i < 24; i++ { // wait up to 2 minutes
+		svc, err := c.clientset.CoreV1().Services(namespace).Get(context.Background(), serviceName, metav1.GetOptions{})
+		if err != nil {
+			return "", fmt.Errorf("failed to get service: %w", err)
+		}
+
+		ingress := svc.Status.LoadBalancer.Ingress
+		if len(ingress) > 0 {
+			if ingress[0].Hostname != "" {
+				return ingress[0].Hostname, nil
+			}
+			if ingress[0].IP != "" {
+				return ingress[0].IP, nil
+			}
+		}
+
+		log.Printf("Waiting for LoadBalancer hostname for service %s (%d/24)...", serviceName, i+1)
+		time.Sleep(5 * time.Second)
+	}
+	return "", fmt.Errorf("timed out waiting for LoadBalancer hostname")
 }
 
 // CleanupOrphanedResources deletes all adapter deployments, services and APIRules
