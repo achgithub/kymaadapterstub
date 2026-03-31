@@ -22,6 +22,7 @@ function setupEventListeners() {
     document.getElementById('adapterType').addEventListener('change', updateConfigSections);
     document.getElementById('createAdapterBtn').addEventListener('click', createAdapter);
     document.getElementById('launchBtn').addEventListener('click', launchScenario);
+    document.getElementById('stopBtn').addEventListener('click', stopScenario);
     document.getElementById('deleteBtn').addEventListener('click', deleteScenarioConfirm);
     document.getElementById('updateAdapterBtn').addEventListener('click', updateAdapter);
     document.getElementById('addFileBtn').addEventListener('click', addFileInput);
@@ -62,9 +63,11 @@ function displayScenario(scenario) {
     document.getElementById('scenarioStatus').className = `badge ${getStatusBadgeClass(scenario.status)}`;
     document.getElementById('scenarioCreated').textContent = new Date(scenario.created_at).toLocaleString();
 
-    // Show launch button only if stopped
+    // Show launch/stop buttons based on status
     const launchBtn = document.getElementById('launchBtn');
+    const stopBtn = document.getElementById('stopBtn');
     launchBtn.style.display = scenario.status === 'stopped' ? 'inline-block' : 'none';
+    stopBtn.style.display = scenario.status === 'running' ? 'inline-block' : 'none';
 
     // Display adapters
     if (scenario.adapters.length === 0) {
@@ -89,6 +92,7 @@ function displayScenario(scenario) {
                 <td>${adapter.behavior_mode}</td>
                 <td>
                     <button class="btn btn-sm btn-warning" onclick="editAdapter('${adapter.id}')">Edit</button>
+                    ${adapter.status === 'running' ? `<button class="btn btn-sm btn-secondary" onclick="stopAdapter('${adapter.id}')">Stop</button>` : ''}
                     <button class="btn btn-sm btn-danger" onclick="deleteAdapter('${adapter.id}')">Delete</button>
                 </td>
             </tr>
@@ -270,6 +274,40 @@ async function launchScenario() {
         alert(`Failed to launch scenario: ${error.message}`);
         document.getElementById('launchBtn').disabled = false;
         document.getElementById('launchBtn').textContent = '🚀 Launch All Adapters';
+    }
+}
+
+async function stopScenario() {
+    if (!confirm('Stop all running adapters in this scenario?')) {
+        return;
+    }
+
+    try {
+        document.getElementById('stopBtn').disabled = true;
+        document.getElementById('stopBtn').textContent = 'Stopping...';
+
+        await api.stopScenario(currentScenario.id);
+        await loadScenario(currentScenario.id);
+
+        document.getElementById('stopBtn').disabled = false;
+        document.getElementById('stopBtn').textContent = '⏹ Stop All Adapters';
+    } catch (error) {
+        alert(`Failed to stop scenario: ${error.message}`);
+        document.getElementById('stopBtn').disabled = false;
+        document.getElementById('stopBtn').textContent = '⏹ Stop All Adapters';
+    }
+}
+
+async function stopAdapter(adapterId) {
+    if (!confirm('Stop this adapter?')) {
+        return;
+    }
+
+    try {
+        await api.stopAdapter(currentScenario.id, adapterId);
+        await loadScenario(currentScenario.id);
+    } catch (error) {
+        alert(`Failed to stop adapter: ${error.message}`);
     }
 }
 

@@ -95,6 +95,9 @@ func (c *Client) CreateAdapterDeployment(namespace string, adapter models.Adapte
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					ImagePullSecrets: []corev1.LocalObjectReference{
+						{Name: "ghcr-secret"},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:  strings.ToLower(adapter.Type) + "-adapter",
@@ -176,6 +179,23 @@ func (c *Client) CreateAdapterService(namespace string, adapter models.Adapter) 
 	// Service DNS name in Kubernetes
 	serviceDNS := fmt.Sprintf("%s.%s.svc.cluster.local", adapter.Name, namespace)
 	return serviceDNS, nil
+}
+
+// StopAdapterDeployment scales a deployment to 0 replicas (stops without deleting)
+func (c *Client) StopAdapterDeployment(namespace string, adapter models.Adapter) error {
+	scale, err := c.clientset.AppsV1().Deployments(namespace).GetScale(context.Background(), adapter.DeploymentName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get deployment scale: %w", err)
+	}
+
+	scale.Spec.Replicas = 0
+	_, err = c.clientset.AppsV1().Deployments(namespace).UpdateScale(context.Background(), adapter.DeploymentName, scale, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to scale deployment to 0: %w", err)
+	}
+
+	log.Printf("Stopped deployment %s in namespace %s", adapter.DeploymentName, namespace)
+	return nil
 }
 
 // DeleteAdapterResources deletes Deployment and Service for an adapter

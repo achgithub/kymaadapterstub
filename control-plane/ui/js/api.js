@@ -57,6 +57,14 @@ class ControlPlaneAPI {
         return this.request('POST', `/scenarios/${id}/launch`);
     }
 
+    stopScenario(id) {
+        return this.request('POST', `/scenarios/${id}/stop`);
+    }
+
+    stopAdapter(scenarioId, adapterId) {
+        return this.request('POST', `/scenarios/${scenarioId}/adapters/${adapterId}/stop`);
+    }
+
     // Adapter endpoints
     addAdapter(scenarioId, adapter) {
         return this.request('POST', `/scenarios/${scenarioId}/adapters`, adapter);

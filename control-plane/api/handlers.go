@@ -101,6 +101,9 @@ func (h *Handler) HandleScenarioDetail(w http.ResponseWriter, r *http.Request) {
 		case "launch":
 			h.handleLaunchScenario(w, r, scenarioID)
 			return
+		case "stop":
+			h.handleStopScenario(w, r, scenarioID)
+			return
 		}
 	}
 
@@ -174,8 +177,9 @@ func (h *Handler) deleteScenario(w http.ResponseWriter, r *http.Request, scenari
 func (h *Handler) handleAdapters(w http.ResponseWriter, r *http.Request, scenarioID string, parts []string) {
 	switch r.Method {
 	case http.MethodPost:
-		if len(parts) == 2 {
-			// POST /api/scenarios/{id}/adapters - add adapter
+		if len(parts) >= 4 && parts[3] == "stop" {
+			h.stopAdapter(w, r, scenarioID, parts[2])
+		} else if len(parts) == 2 {
 			h.addAdapter(w, r, scenarioID)
 		}
 	case http.MethodGet, http.MethodPut, http.MethodDelete:
@@ -351,6 +355,62 @@ func (h *Handler) handleLaunchScenario(w http.ResponseWriter, r *http.Request, s
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(scenario)
+}
+
+// handleStopScenario stops all running adapters in a scenario
+func (h *Handler) handleStopScenario(w http.ResponseWriter, r *http.Request, scenarioID string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	scenario, err := h.store.GetScenario(scenarioID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	if h.k8sClient == nil {
+		http.Error(w, "Kubernetes client not available", http.StatusInternalServerError)
+		return
+	}
+
+	for _, adapter := range scenario.Adapters {
+		if adapter.Status != "running" {
+			continue
+		}
+		if err := h.k8sClient.StopAdapterDeployment(h.namespace, adapter); err != nil {
+			log.Printf("Error stopping adapter %s: %v", adapter.ID, err)
+		}
+		h.store.UpdateAdapterStatus(scenarioID, adapter.ID, "stopped")
+	}
+
+	h.store.UpdateScenarioStatus(scenarioID, "stopped")
+
+	scenario, _ = h.store.GetScenario(scenarioID)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(scenario)
+}
+
+// stopAdapter stops a single adapter
+func (h *Handler) stopAdapter(w http.ResponseWriter, r *http.Request, scenarioID, adapterID string) {
+	adapter, err := h.store.GetAdapter(scenarioID, adapterID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	if h.k8sClient != nil && adapter.Status == "running" {
+		if err := h.k8sClient.StopAdapterDeployment(h.namespace, *adapter); err != nil {
+			log.Printf("Error stopping adapter %s: %v", adapterID, err)
+		}
+	}
+
+	h.store.UpdateAdapterStatus(scenarioID, adapterID, "stopped")
+
+	adapter, _ = h.store.GetAdapter(scenarioID, adapterID)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(adapter)
 }
 
 // HandleAdapterConfig serves adapter configuration to adapters
