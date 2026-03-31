@@ -8,21 +8,33 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"github.com/andrew/kymaadapterstub/control-plane/models"
 )
 
-type Client struct {
-	clientset kubernetes.Interface
-	config    *rest.Config
+var apiRuleGVR = schema.GroupVersionResource{
+	Group:    "gateway.kyma-project.io",
+	Version:  "v2",
+	Resource: "apirules",
 }
 
-func NewClient() (*Client, error) {
+type Client struct {
+	clientset     kubernetes.Interface
+	dynamicClient dynamic.Interface
+	config        *rest.Config
+	clusterDomain string
+}
+
+func NewClient(clusterDomain string) (*Client, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get in-cluster config: %w", err)
@@ -33,9 +45,16 @@ func NewClient() (*Client, error) {
 		return nil, fmt.Errorf("failed to create clientset: %w", err)
 	}
 
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
+	}
+
 	return &Client{
-		clientset: clientset,
-		config:    config,
+		clientset:     clientset,
+		dynamicClient: dynamicClient,
+		config:        config,
+		clusterDomain: clusterDomain,
 	}, nil
 }
 
@@ -213,6 +232,70 @@ func (c *Client) DeleteAdapterResources(namespace string, adapter models.Adapter
 	}
 
 	log.Printf("Deleted resources for adapter %s", adapter.ID)
+	return nil
+}
+
+// CreateAdapterAPIRule creates a Kyma APIRule to expose an adapter publicly
+// Only applies to HTTP-based adapters (REST, OData) — not SFTP
+func (c *Client) CreateAdapterAPIRule(namespace string, adapter models.Adapter) (string, error) {
+	if adapter.Type == "SFTP" {
+		return "", nil
+	}
+
+	if c.clusterDomain == "" {
+		return "", fmt.Errorf("cluster domain not configured")
+	}
+
+	host := fmt.Sprintf("%s.%s", adapter.Name, c.clusterDomain)
+
+	apiRule := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "gateway.kyma-project.io/v2",
+			"kind":       "APIRule",
+			"metadata": map[string]interface{}{
+				"name":      adapter.Name,
+				"namespace": namespace,
+			},
+			"spec": map[string]interface{}{
+				"gateway": "kyma-system/kyma-gateway",
+				"hosts":   []interface{}{host},
+				"service": map[string]interface{}{
+					"name": adapter.Name,
+					"port": int64(80),
+				},
+				"rules": []interface{}{
+					map[string]interface{}{
+						"path":    "/{**}",
+						"methods": []interface{}{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+						"noAuth":  true,
+					},
+				},
+			},
+		},
+	}
+
+	_, err := c.dynamicClient.Resource(apiRuleGVR).Namespace(namespace).Create(context.Background(), apiRule, metav1.CreateOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to create APIRule: %w", err)
+	}
+
+	publicURL := fmt.Sprintf("https://%s", host)
+	log.Printf("Created APIRule for adapter %s: %s", adapter.Name, publicURL)
+	return publicURL, nil
+}
+
+// DeleteAdapterAPIRule deletes the APIRule for an adapter
+func (c *Client) DeleteAdapterAPIRule(namespace string, adapter models.Adapter) error {
+	if adapter.Type == "SFTP" {
+		return nil
+	}
+
+	err := c.dynamicClient.Resource(apiRuleGVR).Namespace(namespace).Delete(context.Background(), adapter.Name, metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete APIRule: %w", err)
+	}
+
+	log.Printf("Deleted APIRule for adapter %s", adapter.Name)
 	return nil
 }
 

@@ -161,6 +161,9 @@ func (h *Handler) deleteScenario(w http.ResponseWriter, r *http.Request, scenari
 			if err := h.k8sClient.DeleteAdapterResources(h.namespace, adapter); err != nil {
 				log.Printf("Error deleting adapter resources: %v", err)
 			}
+			if err := h.k8sClient.DeleteAdapterAPIRule(h.namespace, adapter); err != nil {
+				log.Printf("Error deleting APIRule: %v", err)
+			}
 		}
 	}
 
@@ -301,6 +304,9 @@ func (h *Handler) deleteAdapter(w http.ResponseWriter, r *http.Request, scenario
 		if err := h.k8sClient.DeleteAdapterResources(h.namespace, *adapter); err != nil {
 			log.Printf("Error deleting adapter resources: %v", err)
 		}
+		if err := h.k8sClient.DeleteAdapterAPIRule(h.namespace, *adapter); err != nil {
+			log.Printf("Error deleting APIRule: %v", err)
+		}
 	}
 
 	if err := h.store.DeleteAdapter(scenarioID, adapterID); err != nil {
@@ -342,15 +348,27 @@ func (h *Handler) handleLaunchScenario(w http.ResponseWriter, r *http.Request, s
 		}
 
 		// Create service
-		serviceDNS, err := h.k8sClient.CreateAdapterService(h.namespace, adapter)
+		_, err = h.k8sClient.CreateAdapterService(h.namespace, adapter)
 		if err != nil {
 			log.Printf("Error creating service for adapter %s: %v", adapter.ID, err)
 			continue
 		}
 
+		// Create APIRule for public access (REST/OData only)
+		publicURL, err := h.k8sClient.CreateAdapterAPIRule(h.namespace, adapter)
+		if err != nil {
+			log.Printf("Error creating APIRule for adapter %s: %v", adapter.ID, err)
+		}
+
+		// Use public URL if available, otherwise fall back to internal DNS
+		adapterURL := publicURL
+		if adapterURL == "" {
+			adapterURL = fmt.Sprintf("%s.%s.svc.cluster.local", adapter.Name, h.namespace)
+		}
+
 		// Update adapter status and ingress URL
 		h.store.UpdateAdapterStatus(scenarioID, adapter.ID, "running")
-		h.store.UpdateAdapterIngressURL(scenarioID, adapter.ID, serviceDNS)
+		h.store.UpdateAdapterIngressURL(scenarioID, adapter.ID, adapterURL)
 
 		// Update local scenario reference
 		scenario.Adapters[i].Status = "running"

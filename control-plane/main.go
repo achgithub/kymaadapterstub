@@ -14,8 +14,11 @@ func main() {
 	// Initialize in-memory store
 	s := store.NewMemoryStore()
 
+	// Cluster domain for building public adapter URLs (e.g. c-6b6fad5.kyma.ondemand.com)
+	clusterDomain := os.Getenv("KYMA_DOMAIN")
+
 	// Initialize Kubernetes client
-	k8sClient, err := k8s.NewClient()
+	k8sClient, err := k8s.NewClient(clusterDomain)
 	if err != nil {
 		log.Printf("Warning: Kubernetes client initialization failed: %v. Continuing without K8s integration.", err)
 	}
@@ -62,6 +65,7 @@ func main() {
 	log.Printf("API available at http://localhost:8080/api")
 	log.Printf("Namespace: %s", namespace)
 	log.Printf("Control Plane URL: %s", controlPlaneURL)
+	log.Printf("Cluster Domain: %s", clusterDomain)
 
 	if err := http.ListenAndServe(port, httpHandler); err != nil {
 		log.Fatalf("Server failed: %v", err)

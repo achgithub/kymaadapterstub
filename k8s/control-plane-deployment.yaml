@@ -22,6 +22,9 @@ rules:
 - apiGroups: ["gateway.kyma-project.io"]
   resources: ["apirules"]
   verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+- apiGroups: ["gateway.kyma-project.io"]
+  resources: ["apirules/status"]
+  verbs: ["get"]
 
 ---
 # ClusterRoleBinding
@@ -68,6 +71,8 @@ spec:
         env:
         - name: KYMA_NAMESPACE
           value: default
+        - name: KYMA_DOMAIN
+          value: "c-6b6fad5.kyma.ondemand.com"
         - name: CONTROL_PLANE_URL
           value: "http://control-plane:8080"
         resources:
