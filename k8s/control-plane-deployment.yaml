@@ -127,3 +127,19 @@ spec:
   - path: /{**}
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     noAuth: true
+
+---
+# Allow adapter pods in the default namespace to call the control plane
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: control-plane-allow-internal
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: control-plane
+  rules:
+  - from:
+    - source:
+        namespaces: ["default"]
