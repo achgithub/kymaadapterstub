@@ -200,6 +200,56 @@ func (c *Client) CreateAdapterService(namespace string, adapter models.Adapter) 
 	return serviceDNS, nil
 }
 
+// CleanupOrphanedResources deletes all adapter deployments, services and APIRules
+// regardless of whether the control plane knows about them
+func (c *Client) CleanupOrphanedResources(namespace string) error {
+	labelSelector := "app=adapter"
+
+	// Delete deployments
+	deployments, err := c.clientset.AppsV1().Deployments(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		log.Printf("Warning: failed to list adapter deployments: %v", err)
+	} else {
+		for _, d := range deployments.Items {
+			if err := c.clientset.AppsV1().Deployments(namespace).Delete(context.Background(), d.Name, metav1.DeleteOptions{}); err != nil {
+				log.Printf("Warning: failed to delete deployment %s: %v", d.Name, err)
+			} else {
+				log.Printf("Deleted orphaned deployment: %s", d.Name)
+			}
+		}
+	}
+
+	// Delete services
+	services, err := c.clientset.CoreV1().Services(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		log.Printf("Warning: failed to list adapter services: %v", err)
+	} else {
+		for _, s := range services.Items {
+			if err := c.clientset.CoreV1().Services(namespace).Delete(context.Background(), s.Name, metav1.DeleteOptions{}); err != nil {
+				log.Printf("Warning: failed to delete service %s: %v", s.Name, err)
+			} else {
+				log.Printf("Deleted orphaned service: %s", s.Name)
+			}
+		}
+	}
+
+	// Delete APIRules
+	apiRules, err := c.dynamicClient.Resource(apiRuleGVR).Namespace(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		log.Printf("Warning: failed to list adapter APIRules: %v", err)
+	} else {
+		for _, r := range apiRules.Items {
+			if err := c.dynamicClient.Resource(apiRuleGVR).Namespace(namespace).Delete(context.Background(), r.GetName(), metav1.DeleteOptions{}); err != nil {
+				log.Printf("Warning: failed to delete APIRule %s: %v", r.GetName(), err)
+			} else {
+				log.Printf("Deleted orphaned APIRule: %s", r.GetName())
+			}
+		}
+	}
+
+	return nil
+}
+
 // StopAdapterDeployment scales a deployment to 0 replicas (stops without deleting)
 func (c *Client) StopAdapterDeployment(namespace string, adapter models.Adapter) error {
 	scale, err := c.clientset.AppsV1().Deployments(namespace).GetScale(context.Background(), adapter.DeploymentName, metav1.GetOptions{})

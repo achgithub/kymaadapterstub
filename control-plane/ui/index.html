@@ -20,9 +20,14 @@
             <div class="col-md-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2>Scenarios</h2>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newScenarioModal">
-                        + New Scenario
-                    </button>
+                    <div>
+                        <button class="btn btn-outline-warning me-2" id="cleanupBtn" onclick="cleanupOrphanedResources()">
+                            🧹 Cleanup Orphaned Pods
+                        </button>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newScenarioModal">
+                            + New Scenario
+                        </button>
+                    </div>
                 </div>
 
                 <div id="scenariosList" class="row">

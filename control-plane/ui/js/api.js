@@ -65,6 +65,10 @@ class ControlPlaneAPI {
         return this.request('POST', `/scenarios/${scenarioId}/adapters/${adapterId}/stop`);
     }
 
+    cleanupOrphanedResources() {
+        return this.request('POST', '/cleanup');
+    }
+
     // Adapter endpoints
     addAdapter(scenarioId, adapter) {
         return this.request('POST', `/scenarios/${scenarioId}/adapters`, adapter);

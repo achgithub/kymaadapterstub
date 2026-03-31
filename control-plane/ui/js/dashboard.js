@@ -99,6 +99,26 @@ async function deleteScenarioConfirm(event, scenarioId) {
     }
 }
 
+async function cleanupOrphanedResources() {
+    if (!confirm('Delete all adapter pods, services and APIRules from Kubernetes? This clears any orphaned resources left after a control plane restart.')) {
+        return;
+    }
+
+    const btn = document.getElementById('cleanupBtn');
+    btn.disabled = true;
+    btn.textContent = 'Cleaning up...';
+
+    try {
+        await api.cleanupOrphanedResources();
+        alert('Cleanup complete.');
+    } catch (error) {
+        alert(`Cleanup failed: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🧹 Cleanup Orphaned Pods';
+    }
+}
+
 function goToScenario(scenarioId) {
     window.location.href = `/scenario.html?id=${scenarioId}`;
 }

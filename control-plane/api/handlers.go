@@ -476,6 +476,27 @@ func (h *Handler) HandleAdapterConfig(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Adapter not found", http.StatusNotFound)
 }
 
+// HandleCleanup deletes all orphaned adapter k8s resources
+func (h *Handler) HandleCleanup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if h.k8sClient == nil {
+		http.Error(w, "Kubernetes client not available", http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.k8sClient.CleanupOrphanedResources(h.namespace); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "cleanup complete"})
+}
+
 // HandleHealth returns health status
 func (h *Handler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

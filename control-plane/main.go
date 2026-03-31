@@ -52,6 +52,7 @@ func main() {
 	mux.HandleFunc("/api/scenarios", handler.HandleScenarios)
 	mux.HandleFunc("/api/scenarios/", handler.HandleScenarioDetail)
 	mux.HandleFunc("/api/adapter-config/", handler.HandleAdapterConfig)
+	mux.HandleFunc("/api/cleanup", handler.HandleCleanup)
 
 	// Health check
 	mux.HandleFunc("/health", handler.HandleHealth)
