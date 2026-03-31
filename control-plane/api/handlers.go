@@ -211,6 +211,12 @@ func (h *Handler) addAdapter(w http.ResponseWriter, r *http.Request, scenarioID 
 		return
 	}
 
+	// Kubernetes service names must start with a letter (DNS-1035)
+	if len(req.Name) == 0 || req.Name[0] < 'a' || req.Name[0] > 'z' {
+		http.Error(w, "Adapter name must start with a lowercase letter (e.g. 'my-adapter')", http.StatusBadRequest)
+		return
+	}
+
 	// Generate adapter ID
 	adapterID := scenarioID + "-" + strings.ToLower(req.Type) + "-" + fmt.Sprintf("%d", time.Now().Unix())
 
