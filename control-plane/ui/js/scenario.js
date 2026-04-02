@@ -108,6 +108,10 @@ function updateConfigSections() {
     document.getElementById('restConfig').style.display = type === 'REST' ? 'block' : 'none';
     document.getElementById('sftpConfig').style.display = type === 'SFTP' ? 'block' : 'none';
     document.getElementById('odataConfig').style.display = type === 'OData' ? 'block' : 'none';
+    document.getElementById('soapConfig').style.display = (type === 'SOAP' || type === 'XI') ? 'block' : 'none';
+    document.getElementById('as2Config').style.display = type === 'AS2' ? 'block' : 'none';
+    document.getElementById('as4Config').style.display = type === 'AS4' ? 'block' : 'none';
+    document.getElementById('edifactConfig').style.display = type === 'EDIFACT' ? 'block' : 'none';
 }
 
 async function createAdapter() {
@@ -157,6 +161,35 @@ async function createAdapter() {
         config = {
             status_code: parseInt(document.getElementById('odataStatusCode').value),
             response_body: document.getElementById('odataBody').value,
+            response_headers: {},
+        };
+    } else if (type === 'SOAP' || type === 'XI') {
+        config = {
+            status_code: parseInt(document.getElementById('soapStatusCode').value),
+            response_body: document.getElementById('soapBody').value,
+            soap_version: document.getElementById('soapVersion').value,
+            response_headers: {},
+        };
+    } else if (type === 'AS2') {
+        config = {
+            status_code: parseInt(document.getElementById('as2StatusCode').value),
+            response_body: document.getElementById('as2Body').value,
+            as2_from: document.getElementById('as2From').value,
+            as2_to: document.getElementById('as2To').value,
+            response_headers: {},
+        };
+    } else if (type === 'AS4') {
+        config = {
+            status_code: parseInt(document.getElementById('as4StatusCode').value),
+            response_body: document.getElementById('as4Body').value,
+            as4_party_id: document.getElementById('as4PartyId').value,
+            response_headers: {},
+        };
+    } else if (type === 'EDIFACT') {
+        config = {
+            status_code: parseInt(document.getElementById('ediStatusCode').value),
+            response_body: document.getElementById('ediBody').value,
+            edi_standard: document.getElementById('ediStandard').value,
             response_headers: {},
         };
     }

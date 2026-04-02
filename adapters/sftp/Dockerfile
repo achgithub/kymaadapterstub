@@ -6,13 +6,17 @@ RUN apk add --no-cache git
 
 COPY go.mod go.* ./
 
+# Upgrade vulnerable dependencies before downloading
+RUN go get golang.org/x/crypto@latest golang.org/x/sys@latest && go mod tidy
+
 RUN go mod download || true
 
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o sftp-adapter .
 
-FROM alpine:latest
+# Pin to specific Alpine version to avoid busybox/zlib vulnerabilities
+FROM alpine:3.21
 
 RUN apk --no-cache add ca-certificates
 

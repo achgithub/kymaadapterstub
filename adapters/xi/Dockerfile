@@ -4,13 +4,13 @@ WORKDIR /app
 
 RUN apk add --no-cache git
 
-COPY go.mod go.* ./
+COPY go.mod ./
 
 RUN go mod download || true
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o odata-adapter .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o xi-adapter .
 
 # Pin to specific Alpine version to avoid busybox/zlib vulnerabilities
 FROM alpine:3.21
@@ -19,8 +19,8 @@ RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
 
-COPY --from=builder /app/odata-adapter .
+COPY --from=builder /app/xi-adapter .
 
 EXPOSE 8080
 
-ENTRYPOINT ["./odata-adapter"]
+ENTRYPOINT ["./xi-adapter"]

@@ -475,9 +475,15 @@ func (h *Handler) HandleAdapterConfig(w http.ResponseWriter, r *http.Request) {
 					"status_code":      adapter.Config.StatusCode,
 					"response_body":    adapter.Config.ResponseBody,
 					"response_headers": adapter.Config.ResponseHeaders,
+					"response_delay_ms": adapter.Config.ResponseDelayMs,
 					"files":            adapter.Config.Files,
 					"auth_mode":        adapter.Config.AuthMode,
 					"credentials":      adapter.Credentials,
+					"soap_version":     adapter.Config.SoapVersion,
+					"as2_from":         adapter.Config.AS2From,
+					"as2_to":           adapter.Config.AS2To,
+					"as4_party_id":     adapter.Config.AS4PartyID,
+					"edi_standard":     adapter.Config.EDIStandard,
 				})
 				return
 			}

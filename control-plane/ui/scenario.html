@@ -131,8 +131,13 @@
                         <select class="form-select" id="adapterType">
                             <option value="">Select type...</option>
                             <option value="REST">REST (HTTP/HTTPS)</option>
+                            <option value="OData">OData (HTTP/OData)</option>
+                            <option value="SOAP">SOAP (SOAP 1.1/1.2)</option>
+                            <option value="XI">XI (SAP PI/XI over SOAP)</option>
                             <option value="SFTP">SFTP (File Transfer)</option>
-                            <option value="OData">OData</option>
+                            <option value="AS2">AS2 (B2B Messaging)</option>
+                            <option value="AS4">AS4 (ebMS3 Messaging)</option>
+                            <option value="EDIFACT">EDIFACT / X12 (EDI)</option>
                         </select>
                     </div>
 
@@ -189,6 +194,86 @@
                         <div class="mb-3">
                             <label for="odataBody" class="form-label">Response Body (XML)</label>
                             <textarea class="form-control" id="odataBody" rows="4" placeholder="<feed>...</feed>"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- SOAP / XI Adapter Config (shared) -->
+                    <div id="soapConfig" style="display:none;">
+                        <h6>SOAP Configuration</h6>
+                        <div class="mb-3">
+                            <label for="soapVersion" class="form-label">SOAP Version</label>
+                            <select class="form-select" id="soapVersion">
+                                <option value="1.1">SOAP 1.1 (text/xml)</option>
+                                <option value="1.2">SOAP 1.2 (application/soap+xml)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="soapStatusCode" class="form-label">Status Code</label>
+                            <input type="number" class="form-control" id="soapStatusCode" value="200">
+                        </div>
+                        <div class="mb-3">
+                            <label for="soapBody" class="form-label">Response Body (SOAP XML)</label>
+                            <textarea class="form-control" id="soapBody" rows="5" placeholder="Leave blank for default SOAP success envelope"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- AS2 Adapter Config -->
+                    <div id="as2Config" style="display:none;">
+                        <h6>AS2 Configuration</h6>
+                        <div class="mb-3">
+                            <label for="as2From" class="form-label">AS2-From (expected sender ID)</label>
+                            <input type="text" class="form-control" id="as2From" placeholder="e.g. CPI_SENDER">
+                            <small class="form-text text-muted">Leave blank to accept any sender.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="as2To" class="form-label">AS2-To (our ID)</label>
+                            <input type="text" class="form-control" id="as2To" placeholder="e.g. KYMA_STUB" value="KYMA_STUB">
+                        </div>
+                        <div class="mb-3">
+                            <label for="as2StatusCode" class="form-label">Status Code</label>
+                            <input type="number" class="form-control" id="as2StatusCode" value="200">
+                        </div>
+                        <div class="mb-3">
+                            <label for="as2Body" class="form-label">Custom Response Body</label>
+                            <textarea class="form-control" id="as2Body" rows="3" placeholder="Leave blank to return a standard MDN acknowledgement"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- AS4 Adapter Config -->
+                    <div id="as4Config" style="display:none;">
+                        <h6>AS4 Configuration</h6>
+                        <div class="mb-3">
+                            <label for="as4PartyId" class="form-label">Our Party ID (ebMS3)</label>
+                            <input type="text" class="form-control" id="as4PartyId" placeholder="e.g. KYMA_STUB" value="KYMA_STUB">
+                        </div>
+                        <div class="mb-3">
+                            <label for="as4StatusCode" class="form-label">Status Code</label>
+                            <input type="number" class="form-control" id="as4StatusCode" value="200">
+                        </div>
+                        <div class="mb-3">
+                            <label for="as4Body" class="form-label">Custom Response Body (SOAP XML)</label>
+                            <textarea class="form-control" id="as4Body" rows="3" placeholder="Leave blank to return a standard AS4 Receipt Signal"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- EDIFACT / X12 Adapter Config -->
+                    <div id="edifactConfig" style="display:none;">
+                        <h6>EDIFACT / X12 Configuration</h6>
+                        <div class="mb-3">
+                            <label for="ediStandard" class="form-label">EDI Standard</label>
+                            <select class="form-select" id="ediStandard">
+                                <option value="">Auto-detect from body</option>
+                                <option value="EDIFACT">EDIFACT</option>
+                                <option value="X12">X12 (ANSI)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="ediStatusCode" class="form-label">Status Code</label>
+                            <input type="number" class="form-control" id="ediStatusCode" value="200">
+                        </div>
+                        <div class="mb-3">
+                            <label for="ediBody" class="form-label">Custom Acknowledgement Body</label>
+                            <textarea class="form-control" id="ediBody" rows="3" placeholder="Leave blank to return auto-generated CONTRL (EDIFACT) or 997 (X12)"></textarea>
                         </div>
                     </div>
                 </div>
