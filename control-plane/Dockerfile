@@ -8,8 +8,11 @@ RUN apk add --no-cache git
 # Copy go mod files
 COPY go.mod go.* ./
 
+# Upgrade vulnerable dependencies before downloading
+RUN go get golang.org/x/oauth2@latest golang.org/x/net@latest && go mod tidy
+
 # Download dependencies
-RUN go mod download || true
+RUN go mod download
 
 # Copy source code
 COPY . .
@@ -17,8 +20,8 @@ COPY . .
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o control-plane .
 
-# Final stage
-FROM alpine:latest
+# Final stage - pin to specific Alpine version to avoid busybox/zlib vulnerabilities
+FROM alpine:3.21
 
 RUN apk --no-cache add ca-certificates
 
