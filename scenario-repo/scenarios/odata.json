@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "name": "OData - Product Catalog (Success)",
-  "description": "Stubs an OData v2 product catalog service. Returns a list of products for any OData query.",
+  "name": "OData - Product Catalog",
+  "description": "Stubs an OData v2 product catalog service. catalog-ok returns a product feed, catalog-err returns 503 Service Unavailable.",
   "adapters": [
     {
-      "name": "productcatalog",
+      "name": "catalog-ok",
       "type": "OData",
       "behavior_mode": "success",
       "config": {
@@ -13,6 +13,18 @@
         "response_headers": {
           "Content-Type": "application/atom+xml",
           "DataServiceVersion": "2.0"
+        }
+      }
+    },
+    {
+      "name": "catalog-err",
+      "type": "OData",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 503,
+        "response_body": "<?xml version=\"1.0\" encoding=\"utf-8\"?><error xmlns=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\"><code>ServiceUnavailable</code><message xml:lang=\"en\">The service is temporarily unavailable. Please try again later.</message></error>",
+        "response_headers": {
+          "Content-Type": "application/xml"
         }
       }
     }

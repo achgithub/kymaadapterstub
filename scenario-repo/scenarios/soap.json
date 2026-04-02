@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "name": "SOAP - ECC FI Document Posting",
+  "description": "Stubs the SAP ECC BAPI_ACC_DOCUMENT_POST SOAP service. fi-ok returns a success response, fi-err returns a SOAP Fault.",
+  "adapters": [
+    {
+      "name": "fi-ok",
+      "type": "SOAP",
+      "behavior_mode": "success",
+      "config": {
+        "status_code": 200,
+        "soap_version": "1.1",
+        "response_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Header/><soap:Body><n0:BAPI_ACC_DOCUMENT_POSTResponse xmlns:n0=\"urn:sap-com:document:sap:rfc:functions\"><RETURN><item><TYPE>S</TYPE><ID>RW</ID><NUMBER>026</NUMBER><MESSAGE>Document 100000001 was posted in company code 1000</MESSAGE><LOG_NO/><LOG_MSG_NO>000000</LOG_MSG_NO><MESSAGE_V1>100000001</MESSAGE_V1><MESSAGE_V2>1000</MESSAGE_V2></item></RETURN></n0:BAPI_ACC_DOCUMENT_POSTResponse></soap:Body></soap:Envelope>",
+        "response_headers": {}
+      }
+    },
+    {
+      "name": "fi-err",
+      "type": "SOAP",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 500,
+        "soap_version": "1.1",
+        "response_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><soap:Fault><faultcode>soap:Server</faultcode><faultstring>POSTING_FAILED: Company code 1000 does not exist</faultstring><detail><n0:BAPI_ACC_DOCUMENT_POSTResponse xmlns:n0=\"urn:sap-com:document:sap:rfc:functions\"><RETURN><item><TYPE>E</TYPE><ID>RW</ID><NUMBER>011</NUMBER><MESSAGE>Company code 1000 does not exist</MESSAGE></item></RETURN></n0:BAPI_ACC_DOCUMENT_POSTResponse></detail></soap:Fault></soap:Body></soap:Envelope>",
+        "response_headers": {}
+      }
+    }
+  ]
+}

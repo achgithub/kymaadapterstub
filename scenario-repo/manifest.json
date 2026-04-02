@@ -1,21 +1,13 @@
 {
   "version": 1,
   "scenarios": [
-    "scenarios/rest-success.json",
-    "scenarios/rest-failure.json",
-    "scenarios/odata-success.json",
-    "scenarios/odata-failure.json",
-    "scenarios/soap-success.json",
-    "scenarios/soap-failure.json",
-    "scenarios/xi-success.json",
-    "scenarios/xi-failure.json",
-    "scenarios/sftp-success.json",
-    "scenarios/sftp-failure.json",
-    "scenarios/as2-success.json",
-    "scenarios/as2-failure.json",
-    "scenarios/as4-success.json",
-    "scenarios/as4-failure.json",
-    "scenarios/edifact-success.json",
-    "scenarios/edifact-failure.json"
+    "scenarios/rest.json",
+    "scenarios/odata.json",
+    "scenarios/soap.json",
+    "scenarios/xi.json",
+    "scenarios/sftp.json",
+    "scenarios/as2.json",
+    "scenarios/as4.json",
+    "scenarios/edifact.json"
   ]
 }

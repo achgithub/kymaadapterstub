@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "name": "EDIFACT - Order Processing",
+  "description": "Stubs an EDI endpoint. edi-ok auto-detects EDIFACT or X12 and returns the appropriate ACK. edi-err returns a processing error.",
+  "adapters": [
+    {
+      "name": "edi-ok",
+      "type": "EDIFACT",
+      "behavior_mode": "success",
+      "config": {
+        "status_code": 200,
+        "edi_standard": "",
+        "response_body": "",
+        "response_headers": {}
+      }
+    },
+    {
+      "name": "edi-err",
+      "type": "EDIFACT",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 500,
+        "edi_standard": "",
+        "response_body": "PROCESSING_ERROR: EDI message rejected by backend system",
+        "response_headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    }
+  ]
+}

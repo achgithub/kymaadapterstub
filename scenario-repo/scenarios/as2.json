@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "name": "AS2 - B2B Partner Messaging",
+  "description": "Stubs an AS2 endpoint. as2-ok accepts messages and returns a sync MDN acknowledgement. as2-err returns a 500 error.",
+  "adapters": [
+    {
+      "name": "as2-ok",
+      "type": "AS2",
+      "behavior_mode": "success",
+      "config": {
+        "status_code": 200,
+        "as2_from": "",
+        "as2_to": "KYMA_STUB",
+        "response_body": "",
+        "response_headers": {}
+      }
+    },
+    {
+      "name": "as2-err",
+      "type": "AS2",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 500,
+        "as2_from": "",
+        "as2_to": "KYMA_STUB",
+        "response_body": "AS2 processing failed: partner system unavailable",
+        "response_headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    }
+  ]
+}

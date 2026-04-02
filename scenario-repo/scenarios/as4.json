@@ -1,10 +1,21 @@
 {
   "version": 1,
-  "name": "AS4 - ebMS3 Messaging (Failure)",
-  "description": "Simulates an AS4 endpoint returning a SOAP Fault. Use to test CPI AS4 error handling.",
+  "name": "AS4 - ebMS3 Messaging",
+  "description": "Stubs an AS4/ebMS3 endpoint. as4-ok returns an AS4 Receipt Signal. as4-err returns a SOAP Fault.",
   "adapters": [
     {
-      "name": "as4-endpoint",
+      "name": "as4-ok",
+      "type": "AS4",
+      "behavior_mode": "success",
+      "config": {
+        "status_code": 200,
+        "as4_party_id": "KYMA_STUB",
+        "response_body": "",
+        "response_headers": {}
+      }
+    },
+    {
+      "name": "as4-err",
       "type": "AS4",
       "behavior_mode": "failure",
       "config": {

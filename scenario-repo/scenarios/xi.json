@@ -1,10 +1,21 @@
 {
   "version": 1,
-  "name": "XI - SAP PI Outbound Interface (Failure)",
-  "description": "Simulates a SAP PI/XI interface returning a SOAP Fault. Use to test CPI exception handling for XI messages.",
+  "name": "XI - SAP PI Outbound Interface",
+  "description": "Stubs a SAP PI/XI synchronous outbound interface. xi-ok returns an XI ApplicationResponse, xi-err returns a SOAP Fault.",
   "adapters": [
     {
-      "name": "xi-outbound",
+      "name": "xi-ok",
+      "type": "XI",
+      "behavior_mode": "success",
+      "config": {
+        "status_code": 200,
+        "soap_version": "1.1",
+        "response_body": "",
+        "response_headers": {}
+      }
+    },
+    {
+      "name": "xi-err",
       "type": "XI",
       "behavior_mode": "failure",
       "config": {

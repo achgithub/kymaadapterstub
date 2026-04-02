@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "name": "REST - S4 Business Partner",
+  "description": "Stubs the SAP S/4HANA Business Partner API. bp-ok returns a partner record, bp-err returns a 500 error. Use both to test CPI happy path and error handling.",
+  "adapters": [
+    {
+      "name": "bp-ok",
+      "type": "REST",
+      "behavior_mode": "success",
+      "config": {
+        "status_code": 200,
+        "response_body": "{\"d\":{\"results\":[{\"BusinessPartner\":\"1000001\",\"BusinessPartnerFullName\":\"Acme Corporation\",\"BusinessPartnerIsBlocked\":false,\"BusinessPartnerType\":\"1\",\"Industry\":\"HT\",\"CountryRegion\":\"DE\",\"Language\":\"EN\"}]}}",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "DataServiceVersion": "2.0"
+        }
+      }
+    },
+    {
+      "name": "bp-err",
+      "type": "REST",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 500,
+        "response_body": "{\"error\":{\"code\":\"SYSTEM_FAILURE\",\"message\":{\"lang\":\"en\",\"value\":\"An internal server error occurred. Please contact your system administrator.\"}}}",
+        "response_headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+  ]
+}
