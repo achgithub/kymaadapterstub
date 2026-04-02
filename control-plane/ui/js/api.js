@@ -69,6 +69,10 @@ class ControlPlaneAPI {
         return this.request('POST', '/cleanup');
     }
 
+    cloneScenario(id) {
+        return this.request('POST', `/scenarios/${id}/clone`);
+    }
+
     // Adapter endpoints
     addAdapter(scenarioId, adapter) {
         return this.request('POST', `/scenarios/${scenarioId}/adapters`, adapter);

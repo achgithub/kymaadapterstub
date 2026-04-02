@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "SFTP - File Exchange (Failure)",
+  "description": "Simulates an SFTP server that rejects all authentication attempts. Use to test CPI error handling for SFTP connection failures.",
+  "adapters": [
+    {
+      "name": "sftp-files",
+      "type": "SFTP",
+      "behavior_mode": "failure",
+      "config": {
+        "files": [],
+        "auth_mode": "failure"
+      },
+      "credentials": {
+        "username": "cpiuser",
+        "password": "cpipass"
+      }
+    }
+  ]
+}

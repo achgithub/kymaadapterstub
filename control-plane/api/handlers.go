@@ -104,6 +104,9 @@ func (h *Handler) HandleScenarioDetail(w http.ResponseWriter, r *http.Request) {
 		case "stop":
 			h.handleStopScenario(w, r, scenarioID)
 			return
+		case "clone":
+			h.handleCloneScenario(w, r, scenarioID)
+			return
 		}
 	}
 
@@ -155,6 +158,11 @@ func (h *Handler) deleteScenario(w http.ResponseWriter, r *http.Request, scenari
 		return
 	}
 
+	if scenario.Source == "github" {
+		http.Error(w, "Cannot delete a GitHub example scenario. Use 'Use as Template' to create an editable copy.", http.StatusForbidden)
+		return
+	}
+
 	// Delete all adapters (Kubernetes resources)
 	for _, adapter := range scenario.Adapters {
 		if h.k8sClient != nil {
@@ -203,6 +211,16 @@ func (h *Handler) handleAdapters(w http.ResponseWriter, r *http.Request, scenari
 }
 
 func (h *Handler) addAdapter(w http.ResponseWriter, r *http.Request, scenarioID string) {
+	scenario, err := h.store.GetScenario(scenarioID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if scenario.Source == "github" {
+		http.Error(w, "Cannot modify a GitHub example scenario. Use 'Use as Template' to create an editable copy.", http.StatusForbidden)
+		return
+	}
+
 	var req models.CreateAdapterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -425,6 +443,24 @@ func (h *Handler) handleStopScenario(w http.ResponseWriter, r *http.Request, sce
 	scenario, _ = h.store.GetScenario(scenarioID)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(scenario)
+}
+
+// handleCloneScenario creates a user-owned copy of any scenario
+func (h *Handler) handleCloneScenario(w http.ResponseWriter, r *http.Request, scenarioID string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	newScenario, err := h.store.CloneScenario(scenarioID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(newScenario)
 }
 
 // stopAdapter stops a single adapter

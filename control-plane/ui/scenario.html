@@ -35,6 +35,8 @@
                             <div class="col-md-6 text-end">
                                 <button class="btn btn-success" id="launchBtn" style="display:none;">🚀 Launch All Adapters</button>
                                 <button class="btn btn-warning" id="stopBtn" style="display:none;">⏹ Stop All Adapters</button>
+                                <button class="btn btn-outline-secondary me-1" id="exportBtn" onclick="exportScenario()" style="display:none;">⬇ Export</button>
+                                <button class="btn btn-outline-primary me-1" id="cloneBtn" onclick="cloneScenario()" style="display:none;">📋 Use as Template</button>
                                 <button class="btn btn-danger" id="deleteBtn">🗑️ Delete Scenario</button>
                             </div>
                         </div>
@@ -309,6 +311,27 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="updateAdapterBtn">Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Export Scenario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Copy this JSON and commit it to your scenarios repository, or download it as a file.</p>
+                    <textarea class="form-control font-monospace" id="exportJson" rows="20" readonly></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-outline-primary" id="copyExportBtn" onclick="copyExportJson()">Copy</button>
+                    <button type="button" class="btn btn-primary" onclick="downloadExportJson()">Download .json</button>
                 </div>
             </div>
         </div>

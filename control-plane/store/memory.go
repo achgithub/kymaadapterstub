@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -200,6 +201,94 @@ func (s *MemoryStore) UpdateAdapterStatus(scenarioID, adapterID, status string) 
 	}
 
 	return fmt.Errorf("adapter not found: %s", adapterID)
+}
+
+// LoadGitHubScenario creates a read-only scenario from a GitHub scenario file.
+// Skips silently if a scenario with the same ID already exists.
+func (s *MemoryStore) LoadGitHubScenario(file models.ScenarioFile) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	id := strings.ToLower(strings.ReplaceAll(file.Name, " ", "-")) + "-github"
+	// Strip any other characters invalid in a map key / display
+	id = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			return r
+		}
+		return '-'
+	}, id)
+
+	if _, exists := s.scenarios[id]; exists {
+		return nil // already loaded, skip
+	}
+
+	adapters := make([]models.Adapter, 0, len(file.Adapters))
+	for i, a := range file.Adapters {
+		adapters = append(adapters, models.Adapter{
+			ID:             fmt.Sprintf("%s-%s-%d", id, strings.ToLower(a.Type), i),
+			Name:           a.Name,
+			Type:           a.Type,
+			BehaviorMode:   a.BehaviorMode,
+			Config:         a.Config,
+			Status:         "stopped",
+			Credentials:    a.Credentials,
+			DeploymentName: a.Name + "-deployment",
+		})
+	}
+
+	s.scenarios[id] = &models.Scenario{
+		ID:          id,
+		Name:        file.Name,
+		Description: file.Description,
+		Adapters:    adapters,
+		Status:      "stopped",
+		Source:      "github",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	return nil
+}
+
+// CloneScenario creates a user-owned copy of any scenario (including GitHub ones).
+func (s *MemoryStore) CloneScenario(sourceID string) (*models.Scenario, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	source, exists := s.scenarios[sourceID]
+	if !exists {
+		return nil, fmt.Errorf("scenario not found: %s", sourceID)
+	}
+
+	newID := strings.ToLower(strings.ReplaceAll(source.Name, " ", "-")) +
+		"-copy-" + fmt.Sprintf("%d", time.Now().Unix())
+	newName := source.Name + " (copy)"
+
+	adapters := make([]models.Adapter, len(source.Adapters))
+	for i, a := range source.Adapters {
+		adapters[i] = models.Adapter{
+			ID:             fmt.Sprintf("%s-%s-%d", newID, strings.ToLower(a.Type), i),
+			Name:           a.Name,
+			Type:           a.Type,
+			BehaviorMode:   a.BehaviorMode,
+			Config:         a.Config,
+			Status:         "stopped",
+			Credentials:    a.Credentials,
+			DeploymentName: a.Name + "-deployment",
+		}
+	}
+
+	newScenario := &models.Scenario{
+		ID:          newID,
+		Name:        newName,
+		Description: source.Description,
+		Adapters:    adapters,
+		Status:      "stopped",
+		Source:      "user",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	s.scenarios[newID] = newScenario
+	return newScenario, nil
 }
 
 func (s *MemoryStore) UpdateAdapterIngressURL(scenarioID, adapterID, url string) error {

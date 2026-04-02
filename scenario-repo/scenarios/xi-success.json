@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "XI - SAP PI Outbound Interface (Success)",
+  "description": "Stubs a SAP PI/XI synchronous outbound interface. Returns a standard XI ApplicationResponse acknowledgement.",
+  "adapters": [
+    {
+      "name": "xi-outbound",
+      "type": "XI",
+      "behavior_mode": "success",
+      "config": {
+        "status_code": 200,
+        "soap_version": "1.1",
+        "response_body": "",
+        "response_headers": {}
+      }
+    }
+  ]
+}

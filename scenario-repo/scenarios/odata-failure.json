@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "name": "OData - Product Catalog (Failure)",
+  "description": "Simulates an OData service returning 503 Service Unavailable. Use to test CPI retry and error handling.",
+  "adapters": [
+    {
+      "name": "productcatalog",
+      "type": "OData",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 503,
+        "response_body": "<?xml version=\"1.0\" encoding=\"utf-8\"?><error xmlns=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\"><code>ServiceUnavailable</code><message xml:lang=\"en\">The service is temporarily unavailable. Please try again later.</message></error>",
+        "response_headers": {
+          "Content-Type": "application/xml"
+        }
+      }
+    }
+  ]
+}

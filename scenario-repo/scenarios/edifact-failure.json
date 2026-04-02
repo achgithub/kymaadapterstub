@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "EDIFACT - Order Processing (Failure)",
+  "description": "Simulates an EDI endpoint returning an error. Use to test CPI EDI error handling and retry logic.",
+  "adapters": [
+    {
+      "name": "edi-receive",
+      "type": "EDIFACT",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 500,
+        "edi_standard": "",
+        "response_body": "PROCESSING_ERROR: EDI message rejected by backend system",
+        "response_headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    }
+  ]
+}

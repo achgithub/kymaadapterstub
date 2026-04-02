@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "AS4 - ebMS3 Messaging (Success)",
+  "description": "Stubs an AS4/ebMS3 endpoint. Accepts UserMessage submissions and returns an AS4 Receipt Signal.",
+  "adapters": [
+    {
+      "name": "as4-endpoint",
+      "type": "AS4",
+      "behavior_mode": "success",
+      "config": {
+        "status_code": 200,
+        "as4_party_id": "KYMA_STUB",
+        "response_body": "",
+        "response_headers": {}
+      }
+    }
+  ]
+}

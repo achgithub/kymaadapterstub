@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "REST - S4 Business Partner (Success)",
+  "description": "Stubs the SAP S/4HANA Business Partner OData API. Returns a single partner record for any request.",
+  "adapters": [
+    {
+      "name": "businesspartner",
+      "type": "REST",
+      "behavior_mode": "success",
+      "config": {
+        "status_code": 200,
+        "response_body": "{\"d\":{\"results\":[{\"BusinessPartner\":\"1000001\",\"BusinessPartnerFullName\":\"Acme Corporation\",\"BusinessPartnerIsBlocked\":false,\"BusinessPartnerType\":\"1\",\"Industry\":\"HT\",\"CountryRegion\":\"DE\",\"Language\":\"EN\"}]}}",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "DataServiceVersion": "2.0"
+        }
+      }
+    }
+  ]
+}

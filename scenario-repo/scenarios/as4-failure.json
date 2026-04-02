@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "AS4 - ebMS3 Messaging (Failure)",
+  "description": "Simulates an AS4 endpoint returning a SOAP Fault. Use to test CPI AS4 error handling.",
+  "adapters": [
+    {
+      "name": "as4-endpoint",
+      "type": "AS4",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 500,
+        "as4_party_id": "KYMA_STUB",
+        "response_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><env:Envelope xmlns:env=\"http://www.w3.org/2003/05/soap-envelope\"><env:Body><env:Fault><env:Code><env:Value>env:Receiver</env:Value></env:Code><env:Reason><env:Text xml:lang=\"en\">AS4 processing failed: party not recognised</env:Text></env:Reason></env:Fault></env:Body></env:Envelope>",
+        "response_headers": {
+          "Content-Type": "application/soap+xml"
+        }
+      }
+    }
+  ]
+}

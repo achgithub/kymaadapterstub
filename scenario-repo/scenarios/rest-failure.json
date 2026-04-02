@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "name": "REST - S4 Business Partner (Failure)",
+  "description": "Simulates the S/4HANA Business Partner API returning a 500 Internal Server Error. Use to test CPI error handling.",
+  "adapters": [
+    {
+      "name": "businesspartner",
+      "type": "REST",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 500,
+        "response_body": "{\"error\":{\"code\":\"SYSTEM_FAILURE\",\"message\":{\"lang\":\"en\",\"value\":\"An internal server error occurred. Please contact your system administrator.\"}}}",
+        "response_headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+  ]
+}

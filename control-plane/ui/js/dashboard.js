@@ -38,32 +38,34 @@ function displayScenarios(scenarios) {
         return;
     }
 
-    container.innerHTML = scenarios.map(scenario => `
+    container.innerHTML = scenarios.map(scenario => {
+        const isGithub = scenario.source === 'github';
+        const footer = isGithub
+            ? `<button class="btn btn-sm btn-outline-primary" onclick="useAsTemplate(event, '${scenario.id}')">Use as Template</button>`
+            : `<button class="btn btn-sm btn-danger" onclick="deleteScenarioConfirm(event, '${scenario.id}')">Delete</button>`;
+        const lockBadge = isGithub ? `<span class="badge bg-info ms-1">Example</span>` : '';
+        const description = scenario.description
+            ? `<p class="text-muted small mb-2">${escapeHtml(scenario.description)}</p>` : '';
+
+        return `
         <div class="col-md-6 col-lg-4 mb-3">
             <div class="card scenario-card" onclick="goToScenario('${scenario.id}')">
                 <div class="card-body">
-                    <h5 class="scenario-card-title">${escapeHtml(scenario.name)}</h5>
-                    <p class="scenario-card-meta">
-                        ID: <code>${scenario.id}</code>
-                    </p>
+                    <h5 class="scenario-card-title">${escapeHtml(scenario.name)}${lockBadge}</h5>
+                    ${description}
                     <div class="mb-3">
                         <span class="badge ${getStatusBadgeClass(scenario.status)}">
                             ${scenario.status.toUpperCase()}
                         </span>
                         <span class="badge bg-secondary">${scenario.adapters.length} adapters</span>
                     </div>
-                    <p class="text-sm text-muted mb-0">
-                        Created: ${new Date(scenario.created_at).toLocaleDateString()}
-                    </p>
                 </div>
                 <div class="card-footer bg-light">
-                    <button class="btn btn-sm btn-danger" onclick="deleteScenarioConfirm(event, '${scenario.id}')">
-                        Delete
-                    </button>
+                    ${footer}
                 </div>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 async function createScenario() {
@@ -116,6 +118,16 @@ async function cleanupOrphanedResources() {
     } finally {
         btn.disabled = false;
         btn.textContent = '🧹 Cleanup Orphaned Pods';
+    }
+}
+
+async function useAsTemplate(event, scenarioId) {
+    event.stopPropagation();
+    try {
+        const newScenario = await api.cloneScenario(scenarioId);
+        goToScenario(newScenario.id);
+    } catch (error) {
+        alert(`Failed to clone scenario: ${error.message}`);
     }
 }
 

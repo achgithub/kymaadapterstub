@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "name": "SFTP - File Exchange (Success)",
+  "description": "Stubs an SFTP server with pre-loaded test files. Accepts connections with the configured credentials.",
+  "adapters": [
+    {
+      "name": "sftp-files",
+      "type": "SFTP",
+      "behavior_mode": "success",
+      "config": {
+        "files": [
+          {
+            "name": "/inbound/test-order.xml",
+            "content": "<?xml version=\"1.0\"?><Order><OrderNumber>PO-12345</OrderNumber><Vendor>ACME Corp</Vendor><Items><Item><SKU>WIDGET-A</SKU><Qty>100</Qty></Item></Items></Order>"
+          },
+          {
+            "name": "/inbound/test-invoice.xml",
+            "content": "<?xml version=\"1.0\"?><Invoice><InvoiceNumber>INV-98765</InvoiceNumber><Amount>4999.00</Amount><Currency>EUR</Currency></Invoice>"
+          }
+        ],
+        "auth_mode": "success"
+      },
+      "credentials": {
+        "username": "cpiuser",
+        "password": "cpipass"
+      }
+    }
+  ]
+}

@@ -70,6 +70,15 @@ function displayScenario(scenario) {
     if (launchBtn) launchBtn.style.display = scenario.status === 'stopped' ? 'inline-block' : 'none';
     if (stopBtn) stopBtn.style.display = scenario.status === 'running' ? 'inline-block' : 'none';
 
+    // GitHub scenarios: show Clone button, hide Delete and Export; user scenarios: show Export and Delete
+    const isGithub = scenario.source === 'github';
+    const exportBtn = document.getElementById('exportBtn');
+    const cloneBtn = document.getElementById('cloneBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    if (exportBtn) exportBtn.style.display = isGithub ? 'none' : 'inline-block';
+    if (cloneBtn) cloneBtn.style.display = isGithub ? 'inline-block' : 'none';
+    if (deleteBtn) deleteBtn.style.display = isGithub ? 'none' : 'inline-block';
+
     // Display adapters
     if (scenario.adapters.length === 0) {
         document.getElementById('adaptersList').style.display = 'none';
@@ -407,4 +416,60 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ---- Export ----
+
+function exportScenario() {
+    if (!currentScenario) return;
+
+    const exportData = {
+        version: 1,
+        name: currentScenario.name,
+        description: currentScenario.description || '',
+        adapters: currentScenario.adapters.map(a => {
+            const entry = {
+                name: a.name,
+                type: a.type,
+                behavior_mode: a.behavior_mode,
+                config: a.config,
+            };
+            if (a.credentials) entry.credentials = a.credentials;
+            return entry;
+        }),
+    };
+
+    document.getElementById('exportJson').value = JSON.stringify(exportData, null, 2);
+    new bootstrap.Modal(document.getElementById('exportModal')).show();
+}
+
+function copyExportJson() {
+    const text = document.getElementById('exportJson').value;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copyExportBtn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+    });
+}
+
+function downloadExportJson() {
+    const text = document.getElementById('exportJson').value;
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentScenario.name.toLowerCase().replace(/\s+/g, '-') + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ---- Clone (Use as Template) ----
+
+async function cloneScenario() {
+    try {
+        const newScenario = await api.cloneScenario(currentScenario.id);
+        window.location.href = `/scenario.html?id=${newScenario.id}`;
+    } catch (error) {
+        alert(`Failed to clone scenario: ${error.message}`);
+    }
 }

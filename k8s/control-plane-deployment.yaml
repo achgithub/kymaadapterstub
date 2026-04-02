@@ -75,6 +75,8 @@ spec:
           value: "c-6b6fad5.kyma.ondemand.com"
         - name: CONTROL_PLANE_URL
           value: "http://control-plane:8080"
+        - name: SCENARIO_REPO_URL
+          value: "https://raw.githubusercontent.com/achgithub/kymaadapterstub-scenarios/main"
         resources:
           requests:
             memory: "128Mi"

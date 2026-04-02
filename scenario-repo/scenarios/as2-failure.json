@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "AS2 - B2B Partner Messaging (Failure)",
+  "description": "Simulates an AS2 partner endpoint rejecting messages with a 500 error. Use to test CPI AS2 error handling.",
+  "adapters": [
+    {
+      "name": "as2-partner",
+      "type": "AS2",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 500,
+        "as2_from": "",
+        "as2_to": "KYMA_STUB",
+        "response_body": "AS2 processing failed: partner system unavailable",
+        "response_headers": {
+          "Content-Type": "text/plain"
+        }
+      }
+    }
+  ]
+}

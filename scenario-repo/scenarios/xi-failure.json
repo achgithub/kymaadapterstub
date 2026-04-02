@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "name": "XI - SAP PI Outbound Interface (Failure)",
+  "description": "Simulates a SAP PI/XI interface returning a SOAP Fault. Use to test CPI exception handling for XI messages.",
+  "adapters": [
+    {
+      "name": "xi-outbound",
+      "type": "XI",
+      "behavior_mode": "failure",
+      "config": {
+        "status_code": 500,
+        "soap_version": "1.1",
+        "response_body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><soap:Fault><faultcode>soap:Server</faultcode><faultstring>XI_ROUTING_FAILED: No receiver could be determined for the message</faultstring></soap:Fault></soap:Body></soap:Envelope>",
+        "response_headers": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "name": "OData - Product Catalog (Success)",
+  "description": "Stubs an OData v2 product catalog service. Returns a list of products for any OData query.",
+  "adapters": [
+    {
+      "name": "productcatalog",
+      "type": "OData",
+      "behavior_mode": "success",
+      "config": {
+        "status_code": 200,
+        "response_body": "<?xml version=\"1.0\" encoding=\"utf-8\"?><feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\" xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\"><entry><content type=\"application/xml\"><m:properties><d:ProductID>PROD-001</d:ProductID><d:ProductName>Widget A</d:ProductName><d:Price m:type=\"Edm.Decimal\">49.99</d:Price></m:properties></content></entry></feed>",
+        "response_headers": {
+          "Content-Type": "application/atom+xml",
+          "DataServiceVersion": "2.0"
+        }
+      }
+    }
+  ]
+}
