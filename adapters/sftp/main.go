@@ -3,7 +3,9 @@ package main
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"log"
@@ -17,13 +19,15 @@ import (
 )
 
 type AdapterConfig struct {
-	ID           string           `json:"id"`
-	Name         string           `json:"name"`
-	Type         string           `json:"type"`
-	BehaviorMode string           `json:"behavior_mode"`
-	Files        []FileConfig     `json:"files"`
-	AuthMode     string           `json:"auth_mode"`
-	Credentials  *Credentials     `json:"credentials"`
+	ID                   string       `json:"id"`
+	Name                 string       `json:"name"`
+	Type                 string       `json:"type"`
+	BehaviorMode         string       `json:"behavior_mode"`
+	Files                []FileConfig `json:"files"`
+	AuthMode             string       `json:"auth_mode"`
+	SSHHostKey           string       `json:"ssh_host_key"`
+	SSHHostKeyFingerprint string      `json:"ssh_host_key_fingerprint"`
+	Credentials          *Credentials `json:"credentials"`
 }
 
 type FileConfig struct {
@@ -67,10 +71,17 @@ func main() {
 
 	log.Printf("Config loaded: %d files", len(config.Files))
 
-	// Generate SSH key pair
-	hostKey, err := generateHostKey()
+	// Load or generate SSH host key
+	hostKey, err := loadOrGenerateHostKey(config.SSHHostKey)
 	if err != nil {
-		log.Fatalf("Failed to generate host key: %v", err)
+		log.Fatalf("Failed to load host key: %v", err)
+	}
+
+	fingerprint := ssh.FingerprintSHA256(hostKey.PublicKey())
+	if config.SSHHostKeyFingerprint != "" {
+		log.Printf("SSH host key fingerprint: %s", config.SSHHostKeyFingerprint)
+	} else {
+		log.Printf("SSH host key fingerprint: %s", fingerprint)
 	}
 
 	// Create SSH server config
@@ -328,17 +339,26 @@ func fetchConfig(adapterID, controlPlaneURL string) (*AdapterConfig, error) {
 	return &config, nil
 }
 
-func generateHostKey() (ssh.Signer, error) {
-	// Generate a random RSA private key for this instance
+// loadOrGenerateHostKey uses the PEM key from config if available,
+// otherwise generates a temporary one (fingerprint will change on restart).
+func loadOrGenerateHostKey(keyPEM string) (ssh.Signer, error) {
+	if keyPEM != "" {
+		block, _ := pem.Decode([]byte(keyPEM))
+		if block == nil {
+			return nil, fmt.Errorf("failed to decode PEM block from config")
+		}
+		privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse private key: %w", err)
+		}
+		return ssh.NewSignerFromKey(privateKey)
+	}
+
+	// No key in config — generate a temporary one (fingerprint changes on restart)
+	log.Printf("Warning: no SSH host key in config — generating a temporary key. Fingerprint will change on each restart.")
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate RSA key: %w", err)
 	}
-
-	signer, err := ssh.NewSignerFromKey(privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create signer: %w", err)
-	}
-
-	return signer, nil
+	return ssh.NewSignerFromKey(privateKey)
 }

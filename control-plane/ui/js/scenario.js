@@ -277,7 +277,18 @@ function editAdapter(adapterId) {
                     </div>
                 </div>
             </div>`).join('');
+        const fingerprintHtml = c.ssh_host_key_fingerprint
+            ? `<div class="mb-3">
+                <label class="form-label">SSH Host Key Fingerprint</label>
+                <div class="input-group">
+                    <input type="text" class="form-control form-control-sm font-monospace" value="${escapeHtml(c.ssh_host_key_fingerprint)}" readonly>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="copyToClipboard('${escapeHtml(c.ssh_host_key_fingerprint)}')">Copy</button>
+                </div>
+                <small class="form-text text-muted">Add this to your CPI SFTP channel to avoid host key warnings on reconnect.</small>
+               </div>`
+            : '';
         configHtml = `
+            ${fingerprintHtml}
             <div class="mb-3">
                 <label class="form-label">Files</label>
                 <div id="editFilesList">${files}</div>

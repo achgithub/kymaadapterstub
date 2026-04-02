@@ -1,7 +1,13 @@
 package api
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +17,7 @@ import (
 	"github.com/andrew/kymaadapterstub/control-plane/k8s"
 	"github.com/andrew/kymaadapterstub/control-plane/models"
 	"github.com/andrew/kymaadapterstub/control-plane/store"
+	"golang.org/x/crypto/ssh"
 )
 
 type Handler struct {
@@ -240,6 +247,17 @@ func (h *Handler) addAdapter(w http.ResponseWriter, r *http.Request, scenarioID 
 
 	// Generate adapter ID
 	adapterID := scenarioID + "-" + strings.ToLower(req.Type) + "-" + fmt.Sprintf("%d", time.Now().Unix())
+
+	// For SFTP adapters, generate a stable SSH host key if one isn't already set
+	if req.Type == "SFTP" && req.Config.SSHHostKey == "" {
+		keyPEM, fingerprint, err := generateSSHHostKey()
+		if err != nil {
+			log.Printf("Warning: could not generate SSH host key: %v", err)
+		} else {
+			req.Config.SSHHostKey = keyPEM
+			req.Config.SSHHostKeyFingerprint = fingerprint
+		}
+	}
 
 	adapter := models.Adapter{
 		ID:             adapterID,
@@ -509,22 +527,24 @@ func (h *Handler) HandleAdapterConfig(w http.ResponseWriter, r *http.Request) {
 			if adapter.ID == adapterID {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{
-					"id":               adapter.ID,
-					"name":             adapter.Name,
-					"type":             adapter.Type,
-					"behavior_mode":    adapter.BehaviorMode,
-					"status_code":      adapter.Config.StatusCode,
-					"response_body":    adapter.Config.ResponseBody,
-					"response_headers": adapter.Config.ResponseHeaders,
-					"response_delay_ms": adapter.Config.ResponseDelayMs,
-					"files":            adapter.Config.Files,
-					"auth_mode":        adapter.Config.AuthMode,
-					"credentials":      adapter.Credentials,
-					"soap_version":     adapter.Config.SoapVersion,
-					"as2_from":         adapter.Config.AS2From,
-					"as2_to":           adapter.Config.AS2To,
-					"as4_party_id":     adapter.Config.AS4PartyID,
-					"edi_standard":     adapter.Config.EDIStandard,
+					"id":                      adapter.ID,
+					"name":                    adapter.Name,
+					"type":                    adapter.Type,
+					"behavior_mode":           adapter.BehaviorMode,
+					"status_code":             adapter.Config.StatusCode,
+					"response_body":           adapter.Config.ResponseBody,
+					"response_headers":        adapter.Config.ResponseHeaders,
+					"response_delay_ms":       adapter.Config.ResponseDelayMs,
+					"files":                   adapter.Config.Files,
+					"auth_mode":               adapter.Config.AuthMode,
+					"ssh_host_key":            adapter.Config.SSHHostKey,
+					"ssh_host_key_fingerprint": adapter.Config.SSHHostKeyFingerprint,
+					"credentials":             adapter.Credentials,
+					"soap_version":            adapter.Config.SoapVersion,
+					"as2_from":                adapter.Config.AS2From,
+					"as2_to":                  adapter.Config.AS2To,
+					"as4_party_id":            adapter.Config.AS4PartyID,
+					"edi_standard":            adapter.Config.EDIStandard,
 				})
 				return
 			}
@@ -561,6 +581,29 @@ func (h *Handler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "ok",
 	})
+}
+
+// generateSSHHostKey creates a 2048-bit RSA key and returns (PEM string, SHA256 fingerprint, error)
+func generateSSHHostKey() (string, string, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", "", fmt.Errorf("generate RSA key: %w", err)
+	}
+
+	pemBlock := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	}
+	keyPEM := string(pem.EncodeToMemory(pemBlock))
+
+	pub, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return "", "", fmt.Errorf("derive public key: %w", err)
+	}
+	hash := sha256.Sum256(pub.Marshal())
+	fingerprint := "SHA256:" + base64.StdEncoding.EncodeToString(hash[:])
+
+	return keyPEM, fingerprint, nil
 }
 
 // HandleSystemLog returns startup log entries
