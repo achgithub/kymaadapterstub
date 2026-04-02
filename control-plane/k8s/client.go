@@ -66,7 +66,7 @@ func (c *Client) CreateAdapterDeployment(namespace string, adapter models.Adapte
 
 	labels := map[string]string{
 		"app":          "adapter",
-		"adapter-id":   adapter.ID,
+		"adapter-id":   sanitizeLabel(adapter.ID),
 		"adapter-type": adapter.Type,
 	}
 
@@ -162,7 +162,7 @@ func (c *Client) CreateAdapterDeployment(namespace string, adapter models.Adapte
 func (c *Client) CreateAdapterService(namespace string, adapter models.Adapter) (string, error) {
 	labels := map[string]string{
 		"app":          "adapter",
-		"adapter-id":   adapter.ID,
+		"adapter-id":   sanitizeLabel(adapter.ID),
 		"adapter-type": adapter.Type,
 	}
 
@@ -346,7 +346,7 @@ func (c *Client) CreateAdapterAPIRule(namespace string, adapter models.Adapter) 
 				"namespace": namespace,
 				"labels": map[string]interface{}{
 					"app":          "adapter",
-					"adapter-id":   adapter.ID,
+					"adapter-id":   sanitizeLabel(adapter.ID),
 					"adapter-type": adapter.Type,
 				},
 			},
@@ -405,6 +405,21 @@ func intOrString(i int32) intstr.IntOrString {
 func parseQuantity(s string) resource.Quantity {
 	q, _ := resource.ParseQuantity(s)
 	return q
+}
+
+// sanitizeLabel replaces characters invalid in Kubernetes label values with hyphens
+func sanitizeLabel(s string) string {
+	result := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' {
+			result[i] = c
+		} else {
+			result[i] = '-'
+		}
+	}
+	// Trim leading/trailing hyphens
+	return strings.Trim(string(result), "-")
 }
 
 func getAdapterImage(adapterType string) string {
