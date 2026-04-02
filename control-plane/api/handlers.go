@@ -201,7 +201,9 @@ func (h *Handler) handleAdapters(w http.ResponseWriter, r *http.Request, scenari
 			h.addAdapter(w, r, scenarioID)
 		}
 	case http.MethodGet, http.MethodPut, http.MethodDelete:
-		if len(parts) >= 3 {
+		if len(parts) >= 4 && parts[3] == "logs" {
+			h.getAdapterLogs(w, r, scenarioID, parts[2])
+		} else if len(parts) >= 3 {
 			adapterID := parts[2]
 			switch r.Method {
 			case http.MethodGet:
@@ -604,6 +606,39 @@ func generateSSHHostKey() (string, string, error) {
 	fingerprint := "SHA256:" + base64.StdEncoding.EncodeToString(hash[:])
 
 	return keyPEM, fingerprint, nil
+}
+
+// getAdapterLogs fetches recent pod logs for a running adapter.
+// Supports ?tail=N (default 100).
+func (h *Handler) getAdapterLogs(w http.ResponseWriter, r *http.Request, scenarioID, adapterID string) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if h.k8sClient == nil {
+		http.Error(w, "Kubernetes client not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	adapter, err := h.store.GetAdapter(scenarioID, adapterID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	tail := int64(100)
+	if t := r.URL.Query().Get("tail"); t != "" {
+		fmt.Sscanf(t, "%d", &tail)
+	}
+
+	logs, err := h.k8sClient.GetAdapterLogs(h.namespace, adapter.ID, tail)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get logs: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"logs": logs})
 }
 
 // HandleAdapterActivity records that an adapter has received a request.

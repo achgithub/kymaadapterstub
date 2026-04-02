@@ -103,6 +103,7 @@ function displayScenario(scenario) {
                 <td><small class="text-muted">${formatLastActivity(adapter.last_activity)}</small></td>
                 <td>
                     <button class="btn btn-sm btn-warning" onclick="editAdapter('${adapter.id}')">Edit</button>
+                    ${adapter.status === 'running' ? `<button class="btn btn-sm btn-info" onclick="showAdapterLogs('${adapter.id}', '${escapeHtml(adapter.name)}')">Logs</button>` : ''}
                     ${adapter.status === 'running' ? `<button class="btn btn-sm btn-secondary" onclick="stopAdapter('${adapter.id}')">Stop</button>` : ''}
                     <button class="btn btn-sm btn-danger" onclick="deleteAdapter('${adapter.id}')">Delete</button>
                 </td>
@@ -568,6 +569,36 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ---- Pod Logs ----
+
+let currentLogsAdapterId = null;
+
+async function showAdapterLogs(adapterId, adapterName) {
+    currentLogsAdapterId = adapterId;
+    document.getElementById('logsAdapterName').textContent = adapterName;
+    document.getElementById('adapterLogsContent').textContent = '(loading...)';
+    new bootstrap.Modal(document.getElementById('adapterLogsModal')).show();
+    await refreshAdapterLogs();
+}
+
+async function refreshAdapterLogs() {
+    if (!currentLogsAdapterId) return;
+    const tail = document.getElementById('logsTailInput').value || 100;
+    const content = document.getElementById('adapterLogsContent');
+    try {
+        const resp = await fetch(`/api/scenarios/${currentScenario.id}/adapters/${currentLogsAdapterId}/logs?tail=${tail}`);
+        if (!resp.ok) {
+            content.textContent = `Error: HTTP ${resp.status}`;
+            return;
+        }
+        const data = await resp.json();
+        content.textContent = data.logs || '(no log output)';
+        content.scrollTop = content.scrollHeight;
+    } catch (e) {
+        content.textContent = `Error: ${e.message}`;
+    }
 }
 
 // ---- Export ----

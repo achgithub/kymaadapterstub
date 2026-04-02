@@ -322,6 +322,29 @@
         </div>
     </div>
 
+    <!-- Adapter Logs Modal -->
+    <div class="modal fade" id="adapterLogsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Pod Logs — <span id="logsAdapterName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <label class="small text-muted mb-0">Tail</label>
+                        <input type="number" id="logsTailInput" class="form-control form-control-sm" value="100" min="1" max="1000" style="width:80px">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="refreshAdapterLogs()">Refresh</button>
+                    </div>
+                    <div id="adapterLogsContent" class="bg-dark text-light rounded p-3 small" style="font-family:monospace; white-space:pre-wrap; max-height:450px; overflow-y:auto;">(loading...)</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Export Modal -->
     <div class="modal fade" id="exportModal" tabindex="-1">
         <div class="modal-dialog modal-lg">

@@ -1,8 +1,10 @@
 package k8s
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"strings"
 	"time"
@@ -391,6 +393,34 @@ func (c *Client) DeleteAdapterAPIRule(namespace string, adapter models.Adapter) 
 
 	log.Printf("Deleted APIRule for adapter %s", adapter.Name)
 	return nil
+}
+
+// GetAdapterLogs returns the last `tail` lines of logs from the adapter's pod.
+func (c *Client) GetAdapterLogs(namespace, adapterID string, tail int64) (string, error) {
+	pods, err := c.clientset.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("adapter-id=%s", sanitizeLabel(adapterID)),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to list pods: %w", err)
+	}
+	if len(pods.Items) == 0 {
+		return "(no pods found — adapter may not be running)", nil
+	}
+
+	pod := pods.Items[0]
+	opts := &corev1.PodLogOptions{TailLines: &tail}
+	req := c.clientset.CoreV1().Pods(namespace).GetLogs(pod.Name, opts)
+	stream, err := req.Stream(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("failed to stream logs: %w", err)
+	}
+	defer stream.Close()
+
+	buf := new(bytes.Buffer)
+	if _, err := io.Copy(buf, stream); err != nil {
+		return "", fmt.Errorf("failed to read logs: %w", err)
+	}
+	return buf.String(), nil
 }
 
 // Helper functions
