@@ -8,6 +8,7 @@
     "scenarios/sftp.json",
     "scenarios/as2.json",
     "scenarios/as4.json",
-    "scenarios/edifact.json"
+    "scenarios/edifact.json",
+    "scenarios/b2b-stack.json"
   ]
 }
