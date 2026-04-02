@@ -245,31 +245,133 @@ function editAdapter(adapterId) {
     document.getElementById('editAdapterId').value = adapterId;
     document.getElementById('editBehaviorMode').value = adapter.behavior_mode;
 
-    // Generate config edit form based on type
+    const c = adapter.config || {};
     let configHtml = '';
-    if (adapter.type === 'REST') {
+
+    if (adapter.type === 'REST' || adapter.type === 'OData') {
         configHtml = `
             <div class="mb-3">
-                <label for="editStatusCode" class="form-label">Status Code</label>
-                <input type="number" class="form-control" id="editStatusCode" value="${adapter.config.status_code || 200}">
+                <label class="form-label">Status Code</label>
+                <input type="number" class="form-control" id="editStatusCode" value="${c.status_code || 200}">
             </div>
             <div class="mb-3">
-                <label for="editBody" class="form-label">Response Body</label>
-                <textarea class="form-control" id="editBody" rows="4">${escapeHtml(adapter.config.response_body || '')}</textarea>
+                <label class="form-label">Response Body</label>
+                <textarea class="form-control" id="editBody" rows="5">${escapeHtml(c.response_body || '')}</textarea>
             </div>
-        `;
+            <div class="mb-3">
+                <label class="form-label">Response Headers (JSON)</label>
+                <textarea class="form-control" id="editHeaders" rows="2">${escapeHtml(JSON.stringify(c.response_headers || {}, null, 2))}</textarea>
+            </div>`;
     } else if (adapter.type === 'SFTP') {
+        const files = (c.files || []).map(f => `
+            <div class="file-input-group card card-sm mb-2 p-2">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control form-control-sm file-name" value="${escapeHtml(f.name || '')}" placeholder="Filename">
+                    </div>
+                    <div class="col-md-8">
+                        <div class="input-group input-group-sm">
+                            <textarea class="form-control form-control-sm file-content" rows="2">${escapeHtml(f.content || '')}</textarea>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.file-input-group').remove()">×</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`).join('');
         configHtml = `
             <div class="mb-3">
                 <label class="form-label">Files</label>
-                <div id="editFilesList"></div>
+                <div id="editFilesList">${files}</div>
+                <button type="button" class="btn btn-sm btn-secondary mt-2" onclick="addEditFileInput()">+ Add File</button>
+            </div>`;
+    } else if (adapter.type === 'SOAP' || adapter.type === 'XI') {
+        configHtml = `
+            <div class="mb-3">
+                <label class="form-label">SOAP Version</label>
+                <select class="form-select" id="editSoapVersion">
+                    <option value="1.1" ${(c.soap_version || '1.1') === '1.1' ? 'selected' : ''}>SOAP 1.1 (text/xml)</option>
+                    <option value="1.2" ${c.soap_version === '1.2' ? 'selected' : ''}>SOAP 1.2 (application/soap+xml)</option>
+                </select>
             </div>
-        `;
-        // Would populate files here
+            <div class="mb-3">
+                <label class="form-label">Status Code</label>
+                <input type="number" class="form-control" id="editStatusCode" value="${c.status_code || 200}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Response Body (SOAP XML)</label>
+                <textarea class="form-control" id="editBody" rows="5">${escapeHtml(c.response_body || '')}</textarea>
+            </div>`;
+    } else if (adapter.type === 'AS2') {
+        configHtml = `
+            <div class="mb-3">
+                <label class="form-label">AS2-From (expected sender ID)</label>
+                <input type="text" class="form-control" id="editAs2From" value="${escapeHtml(c.as2_from || '')}" placeholder="Leave blank to accept any">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">AS2-To (our ID)</label>
+                <input type="text" class="form-control" id="editAs2To" value="${escapeHtml(c.as2_to || 'KYMA_STUB')}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Status Code</label>
+                <input type="number" class="form-control" id="editStatusCode" value="${c.status_code || 200}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Custom Response Body</label>
+                <textarea class="form-control" id="editBody" rows="3">${escapeHtml(c.response_body || '')}</textarea>
+            </div>`;
+    } else if (adapter.type === 'AS4') {
+        configHtml = `
+            <div class="mb-3">
+                <label class="form-label">Our Party ID (ebMS3)</label>
+                <input type="text" class="form-control" id="editAs4PartyId" value="${escapeHtml(c.as4_party_id || 'KYMA_STUB')}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Status Code</label>
+                <input type="number" class="form-control" id="editStatusCode" value="${c.status_code || 200}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Custom Response Body (SOAP XML)</label>
+                <textarea class="form-control" id="editBody" rows="3">${escapeHtml(c.response_body || '')}</textarea>
+            </div>`;
+    } else if (adapter.type === 'EDIFACT') {
+        configHtml = `
+            <div class="mb-3">
+                <label class="form-label">EDI Standard</label>
+                <select class="form-select" id="editEdiStandard">
+                    <option value="" ${!c.edi_standard ? 'selected' : ''}>Auto-detect from body</option>
+                    <option value="EDIFACT" ${c.edi_standard === 'EDIFACT' ? 'selected' : ''}>EDIFACT</option>
+                    <option value="X12" ${c.edi_standard === 'X12' ? 'selected' : ''}>X12 (ANSI)</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Status Code</label>
+                <input type="number" class="form-control" id="editStatusCode" value="${c.status_code || 200}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Custom Acknowledgement Body</label>
+                <textarea class="form-control" id="editBody" rows="3">${escapeHtml(c.response_body || '')}</textarea>
+            </div>`;
     }
 
     document.getElementById('editConfigContainer').innerHTML = configHtml;
     new bootstrap.Modal(document.getElementById('editAdapterModal')).show();
+}
+
+function addEditFileInput() {
+    const container = document.getElementById('editFilesList');
+    container.insertAdjacentHTML('beforeend', `
+        <div class="file-input-group card card-sm mb-2 p-2">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm file-name" placeholder="Filename">
+                </div>
+                <div class="col-md-8">
+                    <div class="input-group input-group-sm">
+                        <textarea class="form-control form-control-sm file-content" rows="2" placeholder="Content"></textarea>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.file-input-group').remove()">×</button>
+                    </div>
+                </div>
+            </div>
+        </div>`);
 }
 
 async function updateAdapter() {
@@ -278,12 +380,43 @@ async function updateAdapter() {
     if (!adapter) return;
 
     const behaviorMode = document.getElementById('editBehaviorMode').value;
-    let config = adapter.config;
+    let config = { ...adapter.config };
 
-    // Update config based on type
-    if (adapter.type === 'REST') {
+    if (adapter.type === 'REST' || adapter.type === 'OData') {
         config.status_code = parseInt(document.getElementById('editStatusCode').value);
         config.response_body = document.getElementById('editBody').value;
+        try {
+            config.response_headers = JSON.parse(document.getElementById('editHeaders').value || '{}');
+        } catch (e) {
+            alert('Invalid JSON in headers');
+            return;
+        }
+    } else if (adapter.type === 'SFTP') {
+        const files = [];
+        document.querySelectorAll('#editFilesList .file-input-group').forEach(group => {
+            const name = group.querySelector('.file-name').value;
+            const content = group.querySelector('.file-content').value;
+            if (name && content) files.push({ name, content });
+        });
+        config.files = files;
+        config.auth_mode = behaviorMode === 'failure' ? 'failure' : 'success';
+    } else if (adapter.type === 'SOAP' || adapter.type === 'XI') {
+        config.status_code = parseInt(document.getElementById('editStatusCode').value);
+        config.response_body = document.getElementById('editBody').value;
+        config.soap_version = document.getElementById('editSoapVersion').value;
+    } else if (adapter.type === 'AS2') {
+        config.status_code = parseInt(document.getElementById('editStatusCode').value);
+        config.response_body = document.getElementById('editBody').value;
+        config.as2_from = document.getElementById('editAs2From').value;
+        config.as2_to = document.getElementById('editAs2To').value;
+    } else if (adapter.type === 'AS4') {
+        config.status_code = parseInt(document.getElementById('editStatusCode').value);
+        config.response_body = document.getElementById('editBody').value;
+        config.as4_party_id = document.getElementById('editAs4PartyId').value;
+    } else if (adapter.type === 'EDIFACT') {
+        config.status_code = parseInt(document.getElementById('editStatusCode').value);
+        config.response_body = document.getElementById('editBody').value;
+        config.edi_standard = document.getElementById('editEdiStandard').value;
     }
 
     try {
@@ -291,7 +424,6 @@ async function updateAdapter() {
             behavior_mode: behaviorMode,
             config,
         });
-
         bootstrap.Modal.getInstance(document.getElementById('editAdapterModal')).hide();
         await loadScenario(currentScenario.id);
     } catch (error) {
@@ -466,8 +598,14 @@ function downloadExportJson() {
 // ---- Clone (Use as Template) ----
 
 async function cloneScenario() {
+    const name = prompt('Name for the new scenario:', currentScenario.name + ' (copy)');
+    if (name === null) return; // cancelled
+    if (!name.trim()) {
+        alert('Please enter a name.');
+        return;
+    }
     try {
-        const newScenario = await api.cloneScenario(currentScenario.id);
+        const newScenario = await api.cloneScenario(currentScenario.id, name.trim());
         window.location.href = `/scenario.html?id=${newScenario.id}`;
     } catch (error) {
         alert(`Failed to clone scenario: ${error.message}`);

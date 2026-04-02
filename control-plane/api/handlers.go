@@ -452,7 +452,12 @@ func (h *Handler) handleCloneScenario(w http.ResponseWriter, r *http.Request, sc
 		return
 	}
 
-	newScenario, err := h.store.CloneScenario(scenarioID)
+	var req struct {
+		Name string `json:"name"`
+	}
+	json.NewDecoder(r.Body).Decode(&req) // optional body — ignore decode error
+
+	newScenario, err := h.store.CloneScenario(scenarioID, req.Name)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return

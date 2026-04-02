@@ -266,7 +266,8 @@ func (s *MemoryStore) LoadGitHubScenario(file models.ScenarioFile) error {
 }
 
 // CloneScenario creates a user-owned copy of any scenario (including GitHub ones).
-func (s *MemoryStore) CloneScenario(sourceID string) (*models.Scenario, error) {
+// If name is empty, defaults to "<source name> (copy)".
+func (s *MemoryStore) CloneScenario(sourceID string, name string) (*models.Scenario, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -275,9 +276,12 @@ func (s *MemoryStore) CloneScenario(sourceID string) (*models.Scenario, error) {
 		return nil, fmt.Errorf("scenario not found: %s", sourceID)
 	}
 
-	newID := strings.ToLower(strings.ReplaceAll(source.Name, " ", "-")) +
-		"-copy-" + fmt.Sprintf("%d", time.Now().Unix())
-	newName := source.Name + " (copy)"
+	newName := name
+	if newName == "" {
+		newName = source.Name + " (copy)"
+	}
+	newID := strings.ToLower(strings.ReplaceAll(newName, " ", "-")) +
+		"-" + fmt.Sprintf("%d", time.Now().Unix())
 
 	adapters := make([]models.Adapter, len(source.Adapters))
 	for i, a := range source.Adapters {

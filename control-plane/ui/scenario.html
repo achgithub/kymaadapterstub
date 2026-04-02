@@ -95,9 +95,14 @@
 
                         <p class="text-sm"><strong>Adapter Types:</strong></p>
                         <ul class="text-sm">
-                            <li><strong>REST:</strong> HTTP/HTTPS endpoint with configurable status codes and responses</li>
-                            <li><strong>SFTP:</strong> SFTP server with files and authentication control</li>
-                            <li><strong>OData:</strong> OData service endpoint</li>
+                            <li><strong>REST:</strong> HTTP endpoint, configurable status code and response body</li>
+                            <li><strong>OData:</strong> OData v2/v4 endpoint, returns OData XML/JSON</li>
+                            <li><strong>SOAP:</strong> SOAP 1.1/1.2 endpoint, returns envelope or fault</li>
+                            <li><strong>XI:</strong> SAP PI/XI SOAP, returns XI routing ACK or fault</li>
+                            <li><strong>SFTP:</strong> SFTP server with configurable files and auth</li>
+                            <li><strong>AS2:</strong> B2B messaging, returns sync MDN acknowledgement</li>
+                            <li><strong>AS4:</strong> ebMS3 messaging, returns AS4 Receipt Signal</li>
+                            <li><strong>EDIFACT:</strong> EDI (auto-detects EDIFACT/X12), returns CONTRL or 997</li>
                         </ul>
 
                         <hr>

@@ -138,8 +138,16 @@ async function cleanupOrphanedResources() {
 
 async function useAsTemplate(event, scenarioId) {
     event.stopPropagation();
+    const scenario = await api.getScenario(scenarioId).catch(() => null);
+    const defaultName = scenario ? scenario.name + ' (copy)' : 'New Scenario';
+    const name = prompt('Name for the new scenario:', defaultName);
+    if (name === null) return; // cancelled
+    if (!name.trim()) {
+        alert('Please enter a name.');
+        return;
+    }
     try {
-        const newScenario = await api.cloneScenario(scenarioId);
+        const newScenario = await api.cloneScenario(scenarioId, name.trim());
         goToScenario(newScenario.id);
     } catch (error) {
         alert(`Failed to clone scenario: ${error.message}`);
