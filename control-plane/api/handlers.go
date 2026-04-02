@@ -622,12 +622,16 @@ func (h *Handler) HandleAdapterActivity(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// HandleSystemLog returns startup log entries
+// HandleSystemLog returns system log entries. Supports ?tail=N to limit results.
 func (h *Handler) HandleSystemLog(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	tail := 0
+	if t := r.URL.Query().Get("tail"); t != "" {
+		fmt.Sscanf(t, "%d", &tail)
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.store.GetStartupLog())
+	json.NewEncoder(w).Encode(h.store.GetSystemLog(tail))
 }

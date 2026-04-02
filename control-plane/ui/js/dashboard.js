@@ -2,26 +2,36 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadScenarios();
-    await loadStartupLog();
+    await loadSystemLog();
+
+    // Auto-refresh system log every 30 seconds
+    setInterval(loadSystemLog, 30000);
 
     // Event listeners
     document.getElementById('createScenarioBtn').addEventListener('click', createScenario);
     document.getElementById('scenarioName').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') createScenario();
     });
+    document.getElementById('logTailInput').addEventListener('change', loadSystemLog);
 });
 
-async function loadStartupLog() {
+async function loadSystemLog() {
     try {
-        const resp = await fetch('/api/system/log');
+        const tail = document.getElementById('logTailInput')?.value || 50;
+        const resp = await fetch(`/api/system/log?tail=${tail}`);
         const lines = await resp.json();
-        if (!lines || lines.length === 0) return;
-        const section = document.getElementById('startupLogSection');
-        const log = document.getElementById('startupLog');
+        const section = document.getElementById('systemLogSection');
+        const log = document.getElementById('systemLog');
+        if (!lines || lines.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
         log.textContent = lines.join('\n');
         section.style.display = '';
+        // Scroll to bottom
+        log.scrollTop = log.scrollHeight;
     } catch (e) {
-        // non-fatal, just don't show the section
+        // non-fatal
     }
 }
 

@@ -95,6 +95,17 @@ func runIdleShutdown(s *store.MemoryStore, k8sClient *k8s.Client, namespace stri
 			continue
 		}
 
+		running := 0
+		for _, sc := range scenarios {
+			if sc.Status == "running" {
+				running++
+			}
+		}
+
+		checkMsg := fmt.Sprintf("Idle check: %d scenario(s) running", running)
+		log.Printf(checkMsg)
+		s.AddSystemLog(checkMsg)
+
 		for _, scenario := range scenarios {
 			if scenario.Status != "running" {
 				continue
@@ -102,6 +113,7 @@ func runIdleShutdown(s *store.MemoryStore, k8sClient *k8s.Client, namespace stri
 
 			runningAdapters := 0
 			allIdle := true
+			var mostRecentActivity time.Time
 			for _, adapter := range scenario.Adapters {
 				if adapter.Status != "running" {
 					continue
@@ -109,15 +121,27 @@ func runIdleShutdown(s *store.MemoryStore, k8sClient *k8s.Client, namespace stri
 				runningAdapters++
 				if adapter.LastActivity == nil || time.Since(*adapter.LastActivity) < idleShutdownAfter {
 					allIdle = false
-					break
+				}
+				if adapter.LastActivity != nil && adapter.LastActivity.After(mostRecentActivity) {
+					mostRecentActivity = *adapter.LastActivity
 				}
 			}
 
-			if runningAdapters == 0 || !allIdle {
+			if runningAdapters == 0 {
 				continue
 			}
 
-			log.Printf("Auto-stopping idle scenario '%s' (no activity for %.0f minutes)", scenario.Name, idleShutdownAfter.Minutes())
+			if !allIdle {
+				idleFor := time.Since(mostRecentActivity).Round(time.Second)
+				msg := fmt.Sprintf("  '%s': active (last call %s ago, shutdown after %.0fm)", scenario.Name, idleFor, idleShutdownAfter.Minutes())
+				log.Printf(msg)
+				s.AddSystemLog(msg)
+				continue
+			}
+
+			msg := fmt.Sprintf("Auto-stopping idle scenario '%s' (no activity for %.0f minutes)", scenario.Name, idleShutdownAfter.Minutes())
+			log.Printf(msg)
+			s.AddSystemLog(msg)
 
 			for _, adapter := range scenario.Adapters {
 				if adapter.Status != "running" {
@@ -125,7 +149,9 @@ func runIdleShutdown(s *store.MemoryStore, k8sClient *k8s.Client, namespace stri
 				}
 				if k8sClient != nil {
 					if err := k8sClient.StopAdapterDeployment(namespace, adapter); err != nil {
-						log.Printf("Auto-stop: error stopping adapter %s: %v", adapter.ID, err)
+						errMsg := fmt.Sprintf("Auto-stop: error stopping adapter %s: %v", adapter.ID, err)
+						log.Printf(errMsg)
+						s.AddSystemLog(errMsg)
 					}
 				}
 				s.UpdateAdapterStatus(scenario.ID, adapter.ID, "stopped")

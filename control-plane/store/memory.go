@@ -9,31 +9,48 @@ import (
 	"github.com/andrew/kymaadapterstub/control-plane/models"
 )
 
+const systemLogMaxEntries = 1000
+
 type MemoryStore struct {
 	scenarios  map[string]*models.Scenario
-	startupLog []string
+	systemLog  []string
 	mu         sync.RWMutex
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		scenarios:  make(map[string]*models.Scenario),
-		startupLog: []string{},
+		scenarios: make(map[string]*models.Scenario),
+		systemLog: []string{},
 	}
 }
 
-func (s *MemoryStore) AddStartupLog(msg string) {
+// AddSystemLog appends a timestamped entry to the system log, capped at systemLogMaxEntries.
+func (s *MemoryStore) AddSystemLog(msg string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.startupLog = append(s.startupLog, msg)
+	entry := time.Now().Format("2006-01-02 15:04:05") + "  " + msg
+	s.systemLog = append(s.systemLog, entry)
+	if len(s.systemLog) > systemLogMaxEntries {
+		s.systemLog = s.systemLog[len(s.systemLog)-systemLogMaxEntries:]
+	}
 }
 
-func (s *MemoryStore) GetStartupLog() []string {
+// GetSystemLog returns the last n entries. If n <= 0, all entries are returned.
+func (s *MemoryStore) GetSystemLog(n int) []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	result := make([]string, len(s.startupLog))
-	copy(result, s.startupLog)
+	src := s.systemLog
+	if n > 0 && n < len(src) {
+		src = src[len(src)-n:]
+	}
+	result := make([]string, len(src))
+	copy(result, src)
 	return result
+}
+
+// AddStartupLog is an alias kept for call-site compatibility.
+func (s *MemoryStore) AddStartupLog(msg string) {
+	s.AddSystemLog(msg)
 }
 
 // Scenario operations
