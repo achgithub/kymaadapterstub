@@ -2,6 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadScenarios();
+    await loadStartupLog();
 
     // Event listeners
     document.getElementById('createScenarioBtn').addEventListener('click', createScenario);
@@ -9,6 +10,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.key === 'Enter') createScenario();
     });
 });
+
+async function loadStartupLog() {
+    try {
+        const resp = await fetch('/api/system/log');
+        const lines = await resp.json();
+        if (!lines || lines.length === 0) return;
+        const section = document.getElementById('startupLogSection');
+        const log = document.getElementById('startupLog');
+        log.textContent = lines.join('\n');
+        section.style.display = '';
+    } catch (e) {
+        // non-fatal, just don't show the section
+    }
+}
 
 async function loadScenarios() {
     try {

@@ -60,6 +60,7 @@ func main() {
 	mux.HandleFunc("/api/scenarios/", handler.HandleScenarioDetail)
 	mux.HandleFunc("/api/adapter-config/", handler.HandleAdapterConfig)
 	mux.HandleFunc("/api/cleanup", handler.HandleCleanup)
+	mux.HandleFunc("/api/system/log", handler.HandleSystemLog)
 	mux.HandleFunc("/health", handler.HandleHealth)
 
 	httpHandler := api.CORSMiddleware(mux)
@@ -78,7 +79,9 @@ func main() {
 // loadScenariosFromGitHub fetches the manifest and each scenario file from the repo.
 // All errors are logged as warnings — a failure here never prevents startup.
 func loadScenariosFromGitHub(s *store.MemoryStore, repoURL string) {
-	log.Printf("Loading example scenarios from %s", repoURL)
+	msg := fmt.Sprintf("Loading example scenarios from %s", repoURL)
+	log.Printf(msg)
+	s.AddStartupLog(msg)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 
@@ -86,19 +89,25 @@ func loadScenariosFromGitHub(s *store.MemoryStore, repoURL string) {
 	manifestURL := fmt.Sprintf("%s/manifest.json", repoURL)
 	resp, err := client.Get(manifestURL)
 	if err != nil {
-		log.Printf("Warning: could not fetch scenario manifest from GitHub: %v", err)
+		msg = fmt.Sprintf("Warning: could not fetch scenario manifest: %v", err)
+		log.Printf(msg)
+		s.AddStartupLog(msg)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Warning: scenario manifest returned HTTP %d — skipping example scenarios", resp.StatusCode)
+		msg = fmt.Sprintf("Warning: scenario manifest returned HTTP %d — skipping example scenarios", resp.StatusCode)
+		log.Printf(msg)
+		s.AddStartupLog(msg)
 		return
 	}
 
 	var manifest models.ScenarioManifest
 	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
-		log.Printf("Warning: could not parse scenario manifest: %v", err)
+		msg = fmt.Sprintf("Warning: could not parse scenario manifest: %v", err)
+		log.Printf(msg)
+		s.AddStartupLog(msg)
 		return
 	}
 
@@ -106,14 +115,18 @@ func loadScenariosFromGitHub(s *store.MemoryStore, repoURL string) {
 	for _, path := range manifest.Scenarios {
 		fileURL := fmt.Sprintf("%s/%s", repoURL, path)
 		if err := loadScenarioFile(s, client, fileURL); err != nil {
-			log.Printf("Warning: could not load scenario %s: %v", path, err)
+			msg = fmt.Sprintf("Warning: could not load scenario %s: %v", path, err)
+			log.Printf(msg)
+			s.AddStartupLog(msg)
 			failed++
 		} else {
 			loaded++
 		}
 	}
 
-	log.Printf("Example scenarios: %d loaded, %d failed", loaded, failed)
+	msg = fmt.Sprintf("Example scenarios: %d loaded, %d failed", loaded, failed)
+	log.Printf(msg)
+	s.AddStartupLog(msg)
 }
 
 func loadScenarioFile(s *store.MemoryStore, client *http.Client, url string) error {

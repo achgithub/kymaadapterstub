@@ -10,14 +10,30 @@ import (
 )
 
 type MemoryStore struct {
-	scenarios map[string]*models.Scenario
-	mu        sync.RWMutex
+	scenarios  map[string]*models.Scenario
+	startupLog []string
+	mu         sync.RWMutex
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		scenarios: make(map[string]*models.Scenario),
+		scenarios:  make(map[string]*models.Scenario),
+		startupLog: []string{},
 	}
+}
+
+func (s *MemoryStore) AddStartupLog(msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.startupLog = append(s.startupLog, msg)
+}
+
+func (s *MemoryStore) GetStartupLog() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make([]string, len(s.startupLog))
+	copy(result, s.startupLog)
+	return result
 }
 
 // Scenario operations
