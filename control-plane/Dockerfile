@@ -9,7 +9,7 @@ RUN apk add --no-cache git
 COPY go.mod go.* ./
 
 # Upgrade vulnerable dependencies before downloading
-RUN go get golang.org/x/oauth2@latest golang.org/x/net@latest && go mod tidy
+RUN go get golang.org/x/oauth2@latest golang.org/x/net@latest golang.org/x/crypto@latest && go mod tidy
 
 # Download dependencies
 RUN go mod download
