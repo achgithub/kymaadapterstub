@@ -16,22 +16,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadSystemLog() {
+    const section = document.getElementById('systemLogSection');
+    const log = document.getElementById('systemLog');
+    const tail = document.getElementById('logTailInput')?.value || 50;
+
     try {
-        const tail = document.getElementById('logTailInput')?.value || 50;
         const resp = await fetch(`/api/system/log?tail=${tail}`);
-        const lines = await resp.json();
-        const section = document.getElementById('systemLogSection');
-        const log = document.getElementById('systemLog');
-        if (!lines || lines.length === 0) {
-            section.style.display = 'none';
+        if (!resp.ok) {
+            log.textContent = `Error fetching log: HTTP ${resp.status}`;
+            section.style.display = '';
             return;
         }
-        log.textContent = lines.join('\n');
+        const lines = await resp.json();
         section.style.display = '';
-        // Scroll to bottom
+        log.textContent = (lines && lines.length > 0) ? lines.join('\n') : '(no log entries yet)';
         log.scrollTop = log.scrollHeight;
     } catch (e) {
-        // non-fatal
+        log.textContent = `Error: ${e.message}`;
+        section.style.display = '';
     }
 }
 
