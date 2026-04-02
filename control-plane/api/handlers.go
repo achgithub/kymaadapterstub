@@ -252,7 +252,7 @@ func (h *Handler) addAdapter(w http.ResponseWriter, r *http.Request, scenarioID 
 		DeploymentName: req.Name + "-deployment",
 	}
 
-	_, err := h.store.AddAdapter(scenarioID, adapter)
+	_, err = h.store.AddAdapter(scenarioID, adapter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
