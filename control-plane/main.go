@@ -14,6 +14,9 @@ import (
 	"github.com/andrew/kymaadapterstub/control-plane/store"
 )
 
+const idleShutdownAfter = 30 * time.Minute
+const idleCheckInterval = 10 * time.Minute
+
 func main() {
 	// Initialize in-memory store
 	s := store.NewMemoryStore()
@@ -59,9 +62,13 @@ func main() {
 	mux.HandleFunc("/api/scenarios", handler.HandleScenarios)
 	mux.HandleFunc("/api/scenarios/", handler.HandleScenarioDetail)
 	mux.HandleFunc("/api/adapter-config/", handler.HandleAdapterConfig)
+	mux.HandleFunc("/api/adapter-activity/", handler.HandleAdapterActivity)
 	mux.HandleFunc("/api/cleanup", handler.HandleCleanup)
 	mux.HandleFunc("/api/system/log", handler.HandleSystemLog)
 	mux.HandleFunc("/health", handler.HandleHealth)
+
+	// Start background idle-shutdown goroutine
+	go runIdleShutdown(s, k8sClient, namespace)
 
 	httpHandler := api.CORSMiddleware(mux)
 
@@ -73,6 +80,58 @@ func main() {
 
 	if err := http.ListenAndServe(port, httpHandler); err != nil {
 		log.Fatalf("Server failed: %v", err)
+	}
+}
+
+// runIdleShutdown checks every idleCheckInterval for running scenarios where all
+// adapters have been idle for idleShutdownAfter, and gracefully stops them.
+func runIdleShutdown(s *store.MemoryStore, k8sClient *k8s.Client, namespace string) {
+	ticker := time.NewTicker(idleCheckInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		scenarios, err := s.ListScenarios()
+		if err != nil {
+			continue
+		}
+
+		for _, scenario := range scenarios {
+			if scenario.Status != "running" {
+				continue
+			}
+
+			runningAdapters := 0
+			allIdle := true
+			for _, adapter := range scenario.Adapters {
+				if adapter.Status != "running" {
+					continue
+				}
+				runningAdapters++
+				if adapter.LastActivity == nil || time.Since(*adapter.LastActivity) < idleShutdownAfter {
+					allIdle = false
+					break
+				}
+			}
+
+			if runningAdapters == 0 || !allIdle {
+				continue
+			}
+
+			log.Printf("Auto-stopping idle scenario '%s' (no activity for %.0f minutes)", scenario.Name, idleShutdownAfter.Minutes())
+
+			for _, adapter := range scenario.Adapters {
+				if adapter.Status != "running" {
+					continue
+				}
+				if k8sClient != nil {
+					if err := k8sClient.StopAdapterDeployment(namespace, adapter); err != nil {
+						log.Printf("Auto-stop: error stopping adapter %s: %v", adapter.ID, err)
+					}
+				}
+				s.UpdateAdapterStatus(scenario.ID, adapter.ID, "stopped")
+			}
+			s.UpdateScenarioStatus(scenario.ID, "stopped")
+		}
 	}
 }
 

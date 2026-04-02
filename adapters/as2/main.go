@@ -58,7 +58,15 @@ func main() {
 	}
 }
 
+func reportActivity(adapterID, controlPlaneURL string) {
+	go func() {
+		c := &http.Client{Timeout: 2 * time.Second}
+		c.Post(fmt.Sprintf("%s/api/adapter-activity/%s", controlPlaneURL, adapterID), "application/json", nil)
+	}()
+}
+
 func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPlaneURL string) {
+	reportActivity(adapterID, controlPlaneURL)
 	if r.Method != http.MethodPost {
 		http.Error(w, "AS2 requires POST", http.StatusMethodNotAllowed)
 		return

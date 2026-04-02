@@ -113,11 +113,19 @@ func main() {
 			continue
 		}
 
-		go handleConnection(conn, sshConfig, config)
+		go handleConnection(conn, sshConfig, config, controlPlaneURL)
 	}
 }
 
-func handleConnection(conn net.Conn, sshConfig *ssh.ServerConfig, config *AdapterConfig) {
+func reportActivity(adapterID, controlPlaneURL string) {
+	go func() {
+		c := &http.Client{Timeout: 2 * time.Second}
+		c.Post(fmt.Sprintf("%s/api/adapter-activity/%s", controlPlaneURL, adapterID), "application/json", nil)
+	}()
+}
+
+func handleConnection(conn net.Conn, sshConfig *ssh.ServerConfig, config *AdapterConfig, controlPlaneURL string) {
+	reportActivity(config.ID, controlPlaneURL)
 	defer conn.Close()
 
 	sshConn, chans, reqs, err := ssh.NewServerConn(conn, sshConfig)

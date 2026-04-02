@@ -100,6 +100,7 @@ function displayScenario(scenario) {
                     ` : '<small class="text-muted">Not assigned</small>'}
                 </td>
                 <td>${adapter.behavior_mode}</td>
+                <td><small class="text-muted">${formatLastActivity(adapter.last_activity)}</small></td>
                 <td>
                     <button class="btn btn-sm btn-warning" onclick="editAdapter('${adapter.id}')">Edit</button>
                     ${adapter.status === 'running' ? `<button class="btn btn-sm btn-secondary" onclick="stopAdapter('${adapter.id}')">Stop</button>` : ''}
@@ -553,6 +554,14 @@ function getStatusBadgeClass(status) {
         default:
             return 'bg-secondary';
     }
+}
+
+function formatLastActivity(lastActivity) {
+    if (!lastActivity) return '—';
+    const diff = Math.floor((Date.now() - new Date(lastActivity)) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
 }
 
 function escapeHtml(text) {

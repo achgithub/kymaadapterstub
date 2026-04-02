@@ -64,7 +64,16 @@ func main() {
 	}
 }
 
+func reportActivity(adapterID, controlPlaneURL string) {
+	go func() {
+		c := &http.Client{Timeout: 2 * time.Second}
+		c.Post(fmt.Sprintf("%s/api/adapter-activity/%s", controlPlaneURL, adapterID), "application/json", nil)
+	}()
+}
+
 func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPlaneURL string, client *http.Client) {
+	reportActivity(adapterID, controlPlaneURL)
+
 	// Fetch configuration from control plane
 	config, err := fetchConfig(adapterID, controlPlaneURL, client)
 	if err != nil {

@@ -606,6 +606,22 @@ func generateSSHHostKey() (string, string, error) {
 	return keyPEM, fingerprint, nil
 }
 
+// HandleAdapterActivity records that an adapter has received a request.
+// Called by adapters as a fire-and-forget POST on each incoming request.
+func (h *Handler) HandleAdapterActivity(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	adapterID := strings.TrimPrefix(r.URL.Path, "/api/adapter-activity/")
+	if adapterID == "" {
+		http.Error(w, "Adapter ID required", http.StatusBadRequest)
+		return
+	}
+	h.store.RecordAdapterActivity(adapterID)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // HandleSystemLog returns startup log entries
 func (h *Handler) HandleSystemLog(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

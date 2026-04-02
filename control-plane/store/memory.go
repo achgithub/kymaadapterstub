@@ -211,12 +211,33 @@ func (s *MemoryStore) UpdateAdapterStatus(scenarioID, adapterID, status string) 
 	for i := range scenario.Adapters {
 		if scenario.Adapters[i].ID == adapterID {
 			scenario.Adapters[i].Status = status
+			// Seed LastActivity when launched so idle clock starts from launch time
+			if status == "running" {
+				now := time.Now()
+				scenario.Adapters[i].LastActivity = &now
+			}
 			scenario.UpdatedAt = time.Now()
 			return nil
 		}
 	}
 
 	return fmt.Errorf("adapter not found: %s", adapterID)
+}
+
+// RecordAdapterActivity updates LastActivity for an adapter by ID, searching all scenarios.
+func (s *MemoryStore) RecordAdapterActivity(adapterID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+	for _, scenario := range s.scenarios {
+		for i := range scenario.Adapters {
+			if scenario.Adapters[i].ID == adapterID {
+				scenario.Adapters[i].LastActivity = &now
+				return
+			}
+		}
+	}
 }
 
 // LoadGitHubScenario creates a read-only scenario from a GitHub scenario file.
