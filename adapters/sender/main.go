@@ -20,6 +20,11 @@ type AdapterConfig struct {
 	Method         string            `json:"method"`          // HTTP method, default POST
 	RequestBody    string            `json:"request_body"`    // payload to send
 	RequestHeaders map[string]string `json:"request_headers"` // additional headers
+
+	// CSRF token pre-fetch
+	CSRFEnabled     bool   `json:"csrf_enabled"`
+	CSRFFetchURL    string `json:"csrf_fetch_url"`    // defaults to target_url
+	CSRFFetchMethod string `json:"csrf_fetch_method"` // HEAD or GET, default HEAD
 }
 
 type TriggerResult struct {
@@ -29,6 +34,7 @@ type TriggerResult struct {
 	Error           string            `json:"error,omitempty"`
 	SentTo          string            `json:"sent_to"`
 	Protocol        string            `json:"protocol"`
+	CSRFToken       string            `json:"csrf_token,omitempty"` // token fetched, for debugging
 }
 
 func main() {
@@ -98,6 +104,40 @@ func handleTrigger(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		method = "POST"
 	}
 
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	// Optional CSRF token pre-fetch (SAP OData / CPI pattern)
+	var csrfToken string
+	var sessionCookies []*http.Cookie
+	if config.CSRFEnabled {
+		fetchURL := config.CSRFFetchURL
+		if fetchURL == "" {
+			fetchURL = config.TargetURL
+		}
+		fetchMethod := config.CSRFFetchMethod
+		if fetchMethod == "" {
+			fetchMethod = "HEAD"
+		}
+
+		fetchReq, err := http.NewRequest(fetchMethod, fetchURL, nil)
+		if err == nil {
+			fetchReq.Header.Set("X-CSRF-Token", "Fetch")
+			// Forward auth headers on the fetch too
+			for k, v := range config.RequestHeaders {
+				fetchReq.Header.Set(k, v)
+			}
+			fetchResp, err := client.Do(fetchReq)
+			if err != nil {
+				writeResult(w, TriggerResult{Error: fmt.Sprintf("CSRF fetch failed: %v", err), SentTo: config.TargetURL, Protocol: protocol})
+				return
+			}
+			csrfToken = fetchResp.Header.Get("X-CSRF-Token")
+			sessionCookies = fetchResp.Cookies()
+			fetchResp.Body.Close()
+			log.Printf("CSRF fetch: %s %s → token=%q cookies=%d", fetchMethod, fetchURL, csrfToken, len(sessionCookies))
+		}
+	}
+
 	var bodyReader io.Reader
 	if config.RequestBody != "" {
 		bodyReader = strings.NewReader(config.RequestBody)
@@ -130,7 +170,14 @@ func handleTrigger(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		req.Header.Set(k, v)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	// Attach CSRF token and session cookies if fetched
+	if csrfToken != "" {
+		req.Header.Set("X-CSRF-Token", csrfToken)
+	}
+	for _, c := range sessionCookies {
+		req.AddCookie(c)
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Trigger failed: %v", err)
@@ -153,6 +200,7 @@ func handleTrigger(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		ResponseHeaders: respHeaders,
 		SentTo:          config.TargetURL,
 		Protocol:        protocol,
+		CSRFToken:       csrfToken,
 	}
 
 	log.Printf("Trigger: %s %s → %d", method, config.TargetURL, resp.StatusCode)

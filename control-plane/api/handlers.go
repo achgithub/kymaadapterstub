@@ -594,6 +594,9 @@ func (h *Handler) HandleAdapterConfig(w http.ResponseWriter, r *http.Request) {
 					"method":                  adapter.Config.Method,
 					"request_body":            adapter.Config.RequestBody,
 					"request_headers":         adapter.Config.RequestHeaders,
+					"csrf_enabled":            adapter.Config.CSRFEnabled,
+					"csrf_fetch_url":          adapter.Config.CSRFFetchURL,
+					"csrf_fetch_method":       adapter.Config.CSRFFetchMethod,
 				})
 				return
 			}

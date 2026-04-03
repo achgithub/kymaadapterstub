@@ -324,6 +324,27 @@
                             <label for="senderHeaders" class="form-label">Request Headers (JSON)</label>
                             <textarea class="form-control" id="senderHeaders" rows="2" placeholder='{"Authorization": "Bearer ..."}'></textarea>
                         </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="senderCSRFEnabled" onchange="toggleCSRFFields('senderCSRFFields', this.checked)">
+                                <label class="form-check-label" for="senderCSRFEnabled">
+                                    Enable CSRF Token Pre-fetch <small class="text-muted">(required by SAP OData / CPI)</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div id="senderCSRFFields" style="display:none;">
+                            <div class="mb-3">
+                                <label for="senderCSRFURL" class="form-label">CSRF Fetch URL <small class="text-muted">(leave blank to use Target URL)</small></label>
+                                <input type="text" class="form-control" id="senderCSRFURL" placeholder="defaults to Target URL">
+                            </div>
+                            <div class="mb-3">
+                                <label for="senderCSRFMethod" class="form-label">CSRF Fetch Method</label>
+                                <select class="form-select" id="senderCSRFMethod">
+                                    <option value="HEAD">HEAD (recommended)</option>
+                                    <option value="GET">GET</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

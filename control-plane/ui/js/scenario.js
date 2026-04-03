@@ -117,6 +117,10 @@ function displayScenario(scenario) {
 
 const SENDER_TYPES = ['REST-SENDER', 'SOAP-SENDER', 'XI-SENDER'];
 
+function toggleCSRFFields(containerId, show) {
+    document.getElementById(containerId).style.display = show ? 'block' : 'none';
+}
+
 function updateConfigSections() {
     const type = document.getElementById('adapterType').value;
     const isSender = SENDER_TYPES.includes(type);
@@ -217,6 +221,9 @@ async function createAdapter() {
                 method: document.getElementById('senderMethod').value,
                 request_body: document.getElementById('senderBody').value,
                 request_headers: JSON.parse(document.getElementById('senderHeaders').value || '{}'),
+                csrf_enabled: document.getElementById('senderCSRFEnabled').checked,
+                csrf_fetch_url: document.getElementById('senderCSRFURL').value,
+                csrf_fetch_method: document.getElementById('senderCSRFMethod').value,
             };
         } catch (e) {
             alert('Invalid JSON in request headers');
@@ -383,6 +390,8 @@ function editAdapter(adapterId) {
                 <textarea class="form-control" id="editBody" rows="3">${escapeHtml(c.response_body || '')}</textarea>
             </div>`;
     } else if (SENDER_TYPES.includes(adapter.type)) {
+        const csrfChecked = c.csrf_enabled ? 'checked' : '';
+        const csrfFieldsDisplay = c.csrf_enabled ? 'block' : 'none';
         configHtml = `
             <div class="mb-3">
                 <label class="form-label">Target URL</label>
@@ -404,6 +413,28 @@ function editAdapter(adapterId) {
             <div class="mb-3">
                 <label class="form-label">Request Headers (JSON)</label>
                 <textarea class="form-control" id="editSenderHeaders" rows="2">${escapeHtml(JSON.stringify(c.request_headers || {}, null, 2))}</textarea>
+            </div>
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="editSenderCSRFEnabled" ${csrfChecked}
+                        onchange="toggleCSRFFields('editSenderCSRFFields', this.checked)">
+                    <label class="form-check-label" for="editSenderCSRFEnabled">
+                        Enable CSRF Token Pre-fetch <small class="text-muted">(required by SAP OData / CPI)</small>
+                    </label>
+                </div>
+            </div>
+            <div id="editSenderCSRFFields" style="display:${csrfFieldsDisplay};">
+                <div class="mb-3">
+                    <label class="form-label">CSRF Fetch URL <small class="text-muted">(leave blank to use Target URL)</small></label>
+                    <input type="text" class="form-control" id="editSenderCSRFURL" value="${escapeHtml(c.csrf_fetch_url || '')}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">CSRF Fetch Method</label>
+                    <select class="form-select" id="editSenderCSRFMethod">
+                        <option value="HEAD" ${(c.csrf_fetch_method || 'HEAD') === 'HEAD' ? 'selected' : ''}>HEAD (recommended)</option>
+                        <option value="GET" ${c.csrf_fetch_method === 'GET' ? 'selected' : ''}>GET</option>
+                    </select>
+                </div>
             </div>`;
     }
 
@@ -476,6 +507,9 @@ async function updateAdapter() {
         config.target_url = document.getElementById('editSenderTargetURL').value;
         config.method = document.getElementById('editSenderMethod').value;
         config.request_body = document.getElementById('editSenderBody').value;
+        config.csrf_enabled = document.getElementById('editSenderCSRFEnabled').checked;
+        config.csrf_fetch_url = document.getElementById('editSenderCSRFURL').value;
+        config.csrf_fetch_method = document.getElementById('editSenderCSRFMethod').value;
         try {
             config.request_headers = JSON.parse(document.getElementById('editSenderHeaders').value || '{}');
         } catch (e) {
@@ -726,6 +760,9 @@ async function doFire(adapterId) {
             text += `Status: ${result.status_code}\n`;
             text += `Sent to: ${result.sent_to}\n`;
             text += `Protocol: ${result.protocol}\n`;
+            if (result.csrf_token) {
+                text += `CSRF Token: ${result.csrf_token}\n`;
+            }
             if (result.response_headers && Object.keys(result.response_headers).length > 0) {
                 text += `\nResponse Headers:\n`;
                 for (const [k, v] of Object.entries(result.response_headers)) {

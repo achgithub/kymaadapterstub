@@ -31,6 +31,11 @@ type AdapterConfig struct {
 	Method         string            `json:"method"`          // HTTP method, default POST
 	RequestBody    string            `json:"request_body"`
 	RequestHeaders map[string]string `json:"request_headers"`
+
+	// CSRF token pre-fetch (SAP OData / CPI pattern)
+	CSRFEnabled     bool   `json:"csrf_enabled"`
+	CSRFFetchURL    string `json:"csrf_fetch_url"`    // defaults to target_url if empty
+	CSRFFetchMethod string `json:"csrf_fetch_method"` // HEAD or GET, default HEAD
 }
 
 type FileConfig struct {
