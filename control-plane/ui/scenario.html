@@ -106,6 +106,13 @@
                             <li><strong>EDIFACT:</strong> EDI (auto-detects EDIFACT/X12), returns CONTRL or 997</li>
                         </ul>
 
+                        <p class="text-sm"><strong>Sender Adapters (Outbound):</strong></p>
+                        <ul class="text-sm">
+                            <li><strong>REST-SENDER:</strong> POSTs to a target HTTP URL, returns response</li>
+                            <li><strong>SOAP-SENDER:</strong> POSTs SOAP envelope to target, sets SOAPAction header</li>
+                            <li><strong>XI-SENDER:</strong> POSTs SAP XI/PI SOAP with routing headers to target</li>
+                        </ul>
+
                         <hr>
 
                         <p class="text-sm"><strong>Behavior Modes:</strong></p>
@@ -146,6 +153,11 @@
                             <option value="AS2">AS2 (B2B Messaging)</option>
                             <option value="AS4">AS4 (ebMS3 Messaging)</option>
                             <option value="EDIFACT">EDIFACT / X12 (EDI)</option>
+                            <optgroup label="Sender Adapters (Outbound)">
+                                <option value="REST-SENDER">REST-SENDER (Outbound HTTP)</option>
+                                <option value="SOAP-SENDER">SOAP-SENDER (Outbound SOAP)</option>
+                                <option value="XI-SENDER">XI-SENDER (Outbound SAP PI/XI)</option>
+                            </optgroup>
                         </select>
                     </div>
 
@@ -284,6 +296,35 @@
                             <textarea class="form-control" id="ediBody" rows="3" placeholder="Leave blank to return auto-generated CONTRL (EDIFACT) or 997 (X12)"></textarea>
                         </div>
                     </div>
+
+                    <!-- Sender Adapter Config -->
+                    <div id="senderConfig" style="display:none;">
+                        <h6>Sender Configuration</h6>
+                        <div class="alert alert-info small py-2">
+                            This adapter will actively POST to the target URL when you click <strong>Fire</strong>. Launch it first, then use the Fire button in the adapter table.
+                        </div>
+                        <div class="mb-3">
+                            <label for="senderTargetURL" class="form-label">Target URL</label>
+                            <input type="text" class="form-control" id="senderTargetURL" placeholder="https://target-system/endpoint">
+                        </div>
+                        <div class="mb-3">
+                            <label for="senderMethod" class="form-label">HTTP Method</label>
+                            <select class="form-select" id="senderMethod">
+                                <option value="POST">POST</option>
+                                <option value="GET">GET</option>
+                                <option value="PUT">PUT</option>
+                                <option value="PATCH">PATCH</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="senderBody" class="form-label">Request Body</label>
+                            <textarea class="form-control" id="senderBody" rows="4" placeholder="Request payload to send"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="senderHeaders" class="form-label">Request Headers (JSON)</label>
+                            <textarea class="form-control" id="senderHeaders" rows="2" placeholder='{"Authorization": "Bearer ..."}'></textarea>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -339,6 +380,25 @@
                     <div id="adapterLogsContent" class="bg-dark text-light rounded p-3 small" style="font-family:monospace; white-space:pre-wrap; max-height:450px; overflow-y:auto;">(loading...)</div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fire Result Modal -->
+    <div class="modal fade" id="fireResultModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Fire Result — <span id="fireAdapterName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="fireResultContent" class="bg-dark text-light rounded p-3 small" style="font-family:monospace; white-space:pre-wrap; max-height:450px; overflow-y:auto;">(firing...)</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" id="fireAgainBtn">Fire Again</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>

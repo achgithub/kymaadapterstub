@@ -89,6 +89,10 @@ class ControlPlaneAPI {
     deleteAdapter(scenarioId, adapterId) {
         return this.request('DELETE', `/scenarios/${scenarioId}/adapters/${adapterId}`);
     }
+
+    triggerAdapter(scenarioId, adapterId) {
+        return this.request('POST', `/scenarios/${scenarioId}/adapters/${adapterId}/trigger`);
+    }
 }
 
 // Create global API instance

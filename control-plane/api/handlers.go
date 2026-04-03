@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -197,6 +198,8 @@ func (h *Handler) handleAdapters(w http.ResponseWriter, r *http.Request, scenari
 	case http.MethodPost:
 		if len(parts) >= 4 && parts[3] == "stop" {
 			h.stopAdapter(w, r, scenarioID, parts[2])
+		} else if len(parts) >= 4 && parts[3] == "trigger" {
+			h.triggerAdapter(w, r, scenarioID, parts[2])
 		} else if len(parts) == 2 {
 			h.addAdapter(w, r, scenarioID)
 		}
@@ -509,6 +512,46 @@ func (h *Handler) stopAdapter(w http.ResponseWriter, r *http.Request, scenarioID
 	json.NewEncoder(w).Encode(adapter)
 }
 
+// triggerAdapter proxies a fire request to a running sender adapter pod
+func (h *Handler) triggerAdapter(w http.ResponseWriter, r *http.Request, scenarioID, adapterID string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	adapter, err := h.store.GetAdapter(scenarioID, adapterID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	senderTypes := map[string]bool{"REST-SENDER": true, "SOAP-SENDER": true, "XI-SENDER": true}
+	if !senderTypes[adapter.Type] {
+		http.Error(w, "Only sender adapters can be triggered", http.StatusBadRequest)
+		return
+	}
+
+	if adapter.Status != "running" {
+		http.Error(w, "Adapter is not running — launch it first", http.StatusConflict)
+		return
+	}
+
+	// Reach the adapter via its in-cluster service name
+	triggerURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:8080/trigger", adapter.Name, h.namespace)
+
+	client := &http.Client{Timeout: 35 * time.Second}
+	resp, err := client.Post(triggerURL, "application/json", nil)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to reach adapter: %v", err), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(body)
+}
+
 // HandleAdapterConfig serves adapter configuration to adapters
 func (h *Handler) HandleAdapterConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -547,6 +590,10 @@ func (h *Handler) HandleAdapterConfig(w http.ResponseWriter, r *http.Request) {
 					"as2_to":                  adapter.Config.AS2To,
 					"as4_party_id":            adapter.Config.AS4PartyID,
 					"edi_standard":            adapter.Config.EDIStandard,
+					"target_url":              adapter.Config.TargetURL,
+					"method":                  adapter.Config.Method,
+					"request_body":            adapter.Config.RequestBody,
+					"request_headers":         adapter.Config.RequestHeaders,
 				})
 				return
 			}

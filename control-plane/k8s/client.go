@@ -470,6 +470,8 @@ func getAdapterImage(adapterType string) string {
 		return "ghcr.io/achgithub/kymaadapterstub-as4-adapter:latest"
 	case "EDIFACT":
 		return "ghcr.io/achgithub/kymaadapterstub-edifact-adapter:latest"
+	case "REST-SENDER", "SOAP-SENDER", "XI-SENDER":
+		return "ghcr.io/achgithub/kymaadapterstub-sender-adapter:latest"
 	default:
 		return "ghcr.io/achgithub/kymaadapterstub-rest-adapter:latest"
 	}

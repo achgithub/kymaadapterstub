@@ -104,6 +104,7 @@ function displayScenario(scenario) {
                 <td>
                     <button class="btn btn-sm btn-warning" onclick="editAdapter('${adapter.id}')">Edit</button>
                     ${adapter.status === 'running' ? `<button class="btn btn-sm btn-info" onclick="showAdapterLogs('${adapter.id}', '${escapeHtml(adapter.name)}')">Logs</button>` : ''}
+                    ${(adapter.status === 'running' && SENDER_TYPES.includes(adapter.type)) ? `<button class="btn btn-sm btn-success" onclick="fireAdapter('${adapter.id}', '${escapeHtml(adapter.name)}')">Fire</button>` : ''}
                     ${adapter.status === 'running' ? `<button class="btn btn-sm btn-secondary" onclick="stopAdapter('${adapter.id}')">Stop</button>` : ''}
                     <button class="btn btn-sm btn-danger" onclick="deleteAdapter('${adapter.id}')">Delete</button>
                 </td>
@@ -114,8 +115,11 @@ function displayScenario(scenario) {
     currentScenario = scenario;
 }
 
+const SENDER_TYPES = ['REST-SENDER', 'SOAP-SENDER', 'XI-SENDER'];
+
 function updateConfigSections() {
     const type = document.getElementById('adapterType').value;
+    const isSender = SENDER_TYPES.includes(type);
     document.getElementById('restConfig').style.display = type === 'REST' ? 'block' : 'none';
     document.getElementById('sftpConfig').style.display = type === 'SFTP' ? 'block' : 'none';
     document.getElementById('odataConfig').style.display = type === 'OData' ? 'block' : 'none';
@@ -123,6 +127,9 @@ function updateConfigSections() {
     document.getElementById('as2Config').style.display = type === 'AS2' ? 'block' : 'none';
     document.getElementById('as4Config').style.display = type === 'AS4' ? 'block' : 'none';
     document.getElementById('edifactConfig').style.display = type === 'EDIFACT' ? 'block' : 'none';
+    document.getElementById('senderConfig').style.display = isSender ? 'block' : 'none';
+    // Hide behavior mode for sender adapters — they don't use it
+    document.getElementById('behaviorMode').closest('.mb-3').style.display = isSender ? 'none' : 'block';
 }
 
 async function createAdapter() {
@@ -203,6 +210,18 @@ async function createAdapter() {
             edi_standard: document.getElementById('ediStandard').value,
             response_headers: {},
         };
+    } else if (SENDER_TYPES.includes(type)) {
+        try {
+            config = {
+                target_url: document.getElementById('senderTargetURL').value,
+                method: document.getElementById('senderMethod').value,
+                request_body: document.getElementById('senderBody').value,
+                request_headers: JSON.parse(document.getElementById('senderHeaders').value || '{}'),
+            };
+        } catch (e) {
+            alert('Invalid JSON in request headers');
+            return;
+        }
     }
 
     try {
@@ -363,6 +382,29 @@ function editAdapter(adapterId) {
                 <label class="form-label">Custom Acknowledgement Body</label>
                 <textarea class="form-control" id="editBody" rows="3">${escapeHtml(c.response_body || '')}</textarea>
             </div>`;
+    } else if (SENDER_TYPES.includes(adapter.type)) {
+        configHtml = `
+            <div class="mb-3">
+                <label class="form-label">Target URL</label>
+                <input type="text" class="form-control" id="editSenderTargetURL" value="${escapeHtml(c.target_url || '')}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">HTTP Method</label>
+                <select class="form-select" id="editSenderMethod">
+                    <option value="POST" ${(c.method || 'POST') === 'POST' ? 'selected' : ''}>POST</option>
+                    <option value="GET" ${c.method === 'GET' ? 'selected' : ''}>GET</option>
+                    <option value="PUT" ${c.method === 'PUT' ? 'selected' : ''}>PUT</option>
+                    <option value="PATCH" ${c.method === 'PATCH' ? 'selected' : ''}>PATCH</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Request Body</label>
+                <textarea class="form-control" id="editSenderBody" rows="4">${escapeHtml(c.request_body || '')}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Request Headers (JSON)</label>
+                <textarea class="form-control" id="editSenderHeaders" rows="2">${escapeHtml(JSON.stringify(c.request_headers || {}, null, 2))}</textarea>
+            </div>`;
     }
 
     document.getElementById('editConfigContainer').innerHTML = configHtml;
@@ -430,6 +472,16 @@ async function updateAdapter() {
         config.status_code = parseInt(document.getElementById('editStatusCode').value);
         config.response_body = document.getElementById('editBody').value;
         config.edi_standard = document.getElementById('editEdiStandard').value;
+    } else if (SENDER_TYPES.includes(adapter.type)) {
+        config.target_url = document.getElementById('editSenderTargetURL').value;
+        config.method = document.getElementById('editSenderMethod').value;
+        config.request_body = document.getElementById('editSenderBody').value;
+        try {
+            config.request_headers = JSON.parse(document.getElementById('editSenderHeaders').value || '{}');
+        } catch (e) {
+            alert('Invalid JSON in request headers');
+            return;
+        }
     }
 
     try {
@@ -644,6 +696,48 @@ function downloadExportJson() {
     a.download = currentScenario.name.toLowerCase().replace(/\s+/g, '-') + '.json';
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// ---- Fire (Sender Adapters) ----
+
+let currentFireAdapterId = null;
+
+async function fireAdapter(adapterId, adapterName) {
+    currentFireAdapterId = adapterId;
+    document.getElementById('fireAdapterName').textContent = adapterName;
+    document.getElementById('fireResultContent').textContent = '(firing...)';
+
+    const modal = new bootstrap.Modal(document.getElementById('fireResultModal'));
+    modal.show();
+
+    document.getElementById('fireAgainBtn').onclick = () => fireAdapter(adapterId, adapterName);
+
+    await doFire(adapterId);
+}
+
+async function doFire(adapterId) {
+    const content = document.getElementById('fireResultContent');
+    try {
+        const result = await api.triggerAdapter(currentScenario.id, adapterId);
+        let text = '';
+        if (result.error) {
+            text += `Error: ${result.error}\n`;
+        } else {
+            text += `Status: ${result.status_code}\n`;
+            text += `Sent to: ${result.sent_to}\n`;
+            text += `Protocol: ${result.protocol}\n`;
+            if (result.response_headers && Object.keys(result.response_headers).length > 0) {
+                text += `\nResponse Headers:\n`;
+                for (const [k, v] of Object.entries(result.response_headers)) {
+                    text += `  ${k}: ${v}\n`;
+                }
+            }
+            text += `\nResponse Body:\n${result.response_body || '(empty)'}`;
+        }
+        content.textContent = text;
+    } catch (e) {
+        content.textContent = `Failed: ${e.message}`;
+    }
 }
 
 // ---- Clone (Use as Template) ----

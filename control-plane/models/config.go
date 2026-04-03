@@ -25,6 +25,12 @@ type AdapterConfig struct {
 
 	// EDIFACT/X12 specific
 	EDIStandard string `json:"edi_standard"` // "EDIFACT" or "X12"
+
+	// Sender adapter specific (REST-SENDER, SOAP-SENDER, XI-SENDER)
+	TargetURL      string            `json:"target_url"`
+	Method         string            `json:"method"`          // HTTP method, default POST
+	RequestBody    string            `json:"request_body"`
+	RequestHeaders map[string]string `json:"request_headers"`
 }
 
 type FileConfig struct {
