@@ -335,6 +335,7 @@ function editAdapter(adapterId) {
                 <input type="password" class="form-control" id="editInboundPass" value="${escapeHtml(creds.password || '')}">
             </div>`;
     } else if (adapter.type === 'SFTP') {
+        const creds = adapter.credentials || {};
         const files = (c.files || []).map(f => `
             <div class="file-input-group card card-sm mb-2 p-2">
                 <div class="row g-2">
@@ -361,6 +362,14 @@ function editAdapter(adapterId) {
             : '';
         configHtml = `
             ${fingerprintHtml}
+            <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" id="editSftpUsername" value="${escapeHtml(creds.username || '')}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password <span class="text-muted fw-normal">(leave blank to accept any)</span></label>
+                <input type="password" class="form-control" id="editSftpPassword" value="${escapeHtml(creds.password || '')}">
+            </div>
             <div class="mb-3">
                 <label class="form-label">Authorized Public Key <span class="text-muted fw-normal">(optional)</span></label>
                 <textarea class="form-control font-monospace" id="editSftpPublicKey" rows="2" placeholder="ssh-rsa AAAA... or leave blank to accept any public key">${escapeHtml(c.ssh_public_key || '')}</textarea>
@@ -602,6 +611,10 @@ async function updateAdapter() {
         config.files = files;
         config.auth_mode = behaviorMode === 'failure' ? 'failure' : 'success';
         config.ssh_public_key = (document.getElementById('editSftpPublicKey')?.value || '').trim();
+        credentials = {
+            username: document.getElementById('editSftpUsername').value,
+            password: document.getElementById('editSftpPassword').value,
+        };
     } else if (adapter.type === 'SOAP' || adapter.type === 'XI') {
         config.status_code = parseInt(document.getElementById('editStatusCode').value);
         config.response_body = document.getElementById('editBody').value;
