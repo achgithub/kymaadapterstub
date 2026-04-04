@@ -37,8 +37,8 @@ class ControlPlaneAPI {
         return this.request('GET', '/scenarios');
     }
 
-    createScenario(name) {
-        return this.request('POST', '/scenarios', { name });
+    createScenario(name, description = '') {
+        return this.request('POST', '/scenarios', { name, description });
     }
 
     getScenario(id) {

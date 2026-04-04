@@ -183,6 +183,164 @@ function getStatusBadgeClass(status) {
     }
 }
 
+// ---- Import / Export ----
+
+async function openImportExport() {
+    // Populate export dropdown with user-owned scenarios only
+    const scenarios = await api.listScenarios().catch(() => []);
+    const select = document.getElementById('exportScenarioSelect');
+    select.innerHTML = '<option value="">-- Select a scenario --</option>';
+    scenarios
+        .filter(s => s.source !== 'github')
+        .forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            select.appendChild(opt);
+        });
+
+    // Reset state
+    document.getElementById('exportJsonText').value = '';
+    document.getElementById('importJsonText').value = '';
+    document.getElementById('importFileInput').value = '';
+    document.getElementById('copyExportBtn').disabled = true;
+    document.getElementById('downloadExportBtn').disabled = true;
+    document.getElementById('importBtn').style.display = 'none';
+
+    // Switch Import button visibility with tabs
+    const importTabBtn = document.getElementById('importTabBtn');
+    const exportTabBtn = document.getElementById('exportTabBtn');
+    importTabBtn.addEventListener('shown.bs.tab', () => {
+        document.getElementById('importBtn').style.display = 'inline-block';
+    }, { once: false });
+    exportTabBtn.addEventListener('shown.bs.tab', () => {
+        document.getElementById('importBtn').style.display = 'none';
+    }, { once: false });
+
+    // Reset to export tab
+    new bootstrap.Tab(exportTabBtn).show();
+
+    new bootstrap.Modal(document.getElementById('importExportModal')).show();
+}
+
+async function loadExportPreview() {
+    const scenarioId = document.getElementById('exportScenarioSelect').value;
+    const textarea = document.getElementById('exportJsonText');
+    const copyBtn = document.getElementById('copyExportBtn');
+    const dlBtn = document.getElementById('downloadExportBtn');
+
+    if (!scenarioId) {
+        textarea.value = '';
+        copyBtn.disabled = true;
+        dlBtn.disabled = true;
+        return;
+    }
+
+    try {
+        const scenario = await api.getScenario(scenarioId);
+        const exportData = {
+            version: 1,
+            name: scenario.name,
+            description: scenario.description || '',
+            adapters: scenario.adapters.map(a => {
+                const entry = {
+                    name: a.name,
+                    type: a.type,
+                    behavior_mode: a.behavior_mode,
+                    config: a.config,
+                };
+                if (a.credentials) entry.credentials = a.credentials;
+                return entry;
+            }),
+        };
+        textarea.value = JSON.stringify(exportData, null, 2);
+        copyBtn.disabled = false;
+        dlBtn.disabled = false;
+    } catch (e) {
+        textarea.value = `Error loading scenario: ${e.message}`;
+        copyBtn.disabled = true;
+        dlBtn.disabled = true;
+    }
+}
+
+function copyExportJson() {
+    const text = document.getElementById('exportJsonText').value;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copyExportBtn');
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+    });
+}
+
+function downloadExportJson() {
+    const text = document.getElementById('exportJsonText').value;
+    if (!text) return;
+    const select = document.getElementById('exportScenarioSelect');
+    const name = select.options[select.selectedIndex]?.text || 'scenario';
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name.toLowerCase().replace(/\s+/g, '-') + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('importJsonText').value = e.target.result;
+    };
+    reader.readAsText(file);
+}
+
+async function importScenario() {
+    const text = document.getElementById('importJsonText').value.trim();
+    if (!text) {
+        alert('Please paste or upload a scenario JSON first.');
+        return;
+    }
+
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (e) {
+        alert('Invalid JSON: ' + e.message);
+        return;
+    }
+
+    if (!data.name || !Array.isArray(data.adapters)) {
+        alert('Invalid scenario format — JSON must have "name" and "adapters" fields.');
+        return;
+    }
+
+    const btn = document.getElementById('importBtn');
+    btn.disabled = true;
+    btn.textContent = 'Importing...';
+
+    try {
+        const scenario = await api.createScenario(data.name, data.description || '');
+        for (const adapter of data.adapters) {
+            await api.addAdapter(scenario.id, {
+                name: adapter.name,
+                type: adapter.type,
+                behavior_mode: adapter.behavior_mode || 'success',
+                config: adapter.config || {},
+                credentials: adapter.credentials || null,
+            });
+        }
+        bootstrap.Modal.getInstance(document.getElementById('importExportModal')).hide();
+        goToScenario(scenario.id);
+    } catch (error) {
+        alert(`Import failed: ${error.message}`);
+        btn.disabled = false;
+        btn.textContent = 'Import Scenario';
+    }
+}
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;

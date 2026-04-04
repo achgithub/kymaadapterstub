@@ -82,7 +82,7 @@ func (h *Handler) createScenario(w http.ResponseWriter, r *http.Request) {
 	// Generate ID from name + timestamp
 	id := strings.ToLower(req.Name) + "-" + fmt.Sprintf("%d", time.Now().Unix())
 
-	scenario, err := h.store.CreateScenario(id, req.Name)
+	scenario, err := h.store.CreateScenario(id, req.Name, req.Description)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

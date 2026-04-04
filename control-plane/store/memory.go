@@ -54,7 +54,7 @@ func (s *MemoryStore) AddStartupLog(msg string) {
 }
 
 // Scenario operations
-func (s *MemoryStore) CreateScenario(id, name string) (*models.Scenario, error) {
+func (s *MemoryStore) CreateScenario(id, name, description string) (*models.Scenario, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -63,12 +63,13 @@ func (s *MemoryStore) CreateScenario(id, name string) (*models.Scenario, error) 
 	}
 
 	scenario := &models.Scenario{
-		ID:        id,
-		Name:      name,
-		Adapters:  []models.Adapter{},
-		Status:    "stopped",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:          id,
+		Name:        name,
+		Description: description,
+		Adapters:    []models.Adapter{},
+		Status:      "stopped",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	s.scenarios[id] = scenario
