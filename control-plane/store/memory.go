@@ -1,12 +1,19 @@
 package store
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/andrew/kymaadapterstub/control-plane/models"
+	"golang.org/x/crypto/ssh"
 )
 
 const systemLogMaxEntries = 1000
@@ -285,12 +292,19 @@ func (s *MemoryStore) LoadGitHubScenario(file models.ScenarioFile) error {
 
 	adapters := make([]models.Adapter, 0, len(file.Adapters))
 	for i, a := range file.Adapters {
+		cfg := a.Config
+		if a.Type == "SFTP" && cfg.SSHHostKey == "" {
+			if keyPEM, fp, err := generateSSHHostKey(); err == nil {
+				cfg.SSHHostKey = keyPEM
+				cfg.SSHHostKeyFingerprint = fp
+			}
+		}
 		adapters = append(adapters, models.Adapter{
 			ID:             fmt.Sprintf("%s-%s-%d", id, strings.ToLower(a.Type), i),
 			Name:           a.Name,
 			Type:           a.Type,
 			BehaviorMode:   a.BehaviorMode,
-			Config:         a.Config,
+			Config:         cfg,
 			Status:         "stopped",
 			Credentials:    a.Credentials,
 			DeploymentName: a.Name + "-deployment",
@@ -330,12 +344,19 @@ func (s *MemoryStore) CloneScenario(sourceID string, name string) (*models.Scena
 
 	adapters := make([]models.Adapter, len(source.Adapters))
 	for i, a := range source.Adapters {
+		cfg := a.Config
+		if a.Type == "SFTP" && cfg.SSHHostKey == "" {
+			if keyPEM, fp, err := generateSSHHostKey(); err == nil {
+				cfg.SSHHostKey = keyPEM
+				cfg.SSHHostKeyFingerprint = fp
+			}
+		}
 		adapters[i] = models.Adapter{
 			ID:             fmt.Sprintf("%s-%s-%d", newID, strings.ToLower(a.Type), i),
 			Name:           a.Name,
 			Type:           a.Type,
 			BehaviorMode:   a.BehaviorMode,
-			Config:         a.Config,
+			Config:         cfg,
 			Status:         "stopped",
 			Credentials:    a.Credentials,
 			DeploymentName: a.Name + "-deployment",
@@ -374,4 +395,24 @@ func (s *MemoryStore) UpdateAdapterIngressURL(scenarioID, adapterID, url string)
 	}
 
 	return fmt.Errorf("adapter not found: %s", adapterID)
+}
+
+// generateSSHHostKey creates a 2048-bit RSA host key and returns (PEM, SHA256 fingerprint, error).
+func generateSSHHostKey() (string, string, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", "", fmt.Errorf("generate RSA key: %w", err)
+	}
+	pemBlock := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	}
+	keyPEM := string(pem.EncodeToMemory(pemBlock))
+	pub, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return "", "", fmt.Errorf("derive public key: %w", err)
+	}
+	hash := sha256.Sum256(pub.Marshal())
+	fingerprint := "SHA256:" + base64.StdEncoding.EncodeToString(hash[:])
+	return keyPEM, fingerprint, nil
 }
