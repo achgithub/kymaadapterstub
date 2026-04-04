@@ -80,6 +80,14 @@ func reportActivity(adapterID, controlPlaneURL string) {
 
 func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPlaneURL string, client *http.Client) {
 	reportActivity(adapterID, controlPlaneURL)
+
+	// CSRF token pre-fetch: CPI sends X-CSRF-Token: Fetch before write operations.
+	// Return a token so CPI can proceed with the actual request.
+	if r.Header.Get("X-CSRF-Token") == "Fetch" {
+		w.Header().Set("X-CSRF-Token", "stub-csrf-token")
+		log.Printf("[%s] %s - CSRF token fetch", r.Method, r.RequestURI)
+	}
+
 	// Fetch configuration from control plane
 	config, err := fetchConfig(adapterID, controlPlaneURL, client)
 	if err != nil {
@@ -109,6 +117,12 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 }
 
 func handleMetadata(w http.ResponseWriter, r *http.Request, adapterID, controlPlaneURL string, client *http.Client) {
+	// CSRF token pre-fetch: CPI targets /$metadata for the preflight HEAD request.
+	if r.Header.Get("X-CSRF-Token") == "Fetch" {
+		w.Header().Set("X-CSRF-Token", "stub-csrf-token")
+		log.Printf("[%s] /$metadata - CSRF token fetch", r.Method)
+	}
+
 	// Return OData metadata
 	// For MVP, return a minimal metadata response
 	metadata := `<?xml version="1.0" encoding="utf-8"?>
