@@ -295,6 +295,7 @@ function editAdapter(adapterId) {
     if (!adapter) return;
 
     document.getElementById('editAdapterId').value = adapterId;
+    document.getElementById('editAdapterName').value = adapter.name;
     document.getElementById('editBehaviorMode').value = adapter.behavior_mode;
 
     const c = adapter.config || {};
@@ -672,8 +673,11 @@ async function updateAdapter() {
         credentials = { username: user, password: pass };
     }
 
+    const adapterName = document.getElementById('editAdapterName').value.trim();
+
     try {
         await api.updateAdapter(currentScenario.id, adapterId, {
+            name: adapterName,
             behavior_mode: behaviorMode,
             config,
             credentials,

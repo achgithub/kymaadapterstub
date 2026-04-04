@@ -29,6 +29,7 @@ type CreateAdapterRequest struct {
 }
 
 type UpdateAdapterRequest struct {
+	Name         string        `json:"name"`
 	BehaviorMode string        `json:"behavior_mode"`
 	Config       AdapterConfig `json:"config"`
 	Credentials  *Credentials  `json:"credentials"`

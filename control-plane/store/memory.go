@@ -187,6 +187,9 @@ func (s *MemoryStore) UpdateAdapter(scenarioID, adapterID string, updates models
 
 	for i := range scenario.Adapters {
 		if scenario.Adapters[i].ID == adapterID {
+			if updates.Name != "" {
+				scenario.Adapters[i].Name = updates.Name
+			}
 			scenario.Adapters[i].BehaviorMode = updates.BehaviorMode
 			scenario.Adapters[i].Config = updates.Config
 			if updates.Credentials != nil {

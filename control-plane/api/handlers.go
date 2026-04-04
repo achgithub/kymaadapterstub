@@ -341,6 +341,7 @@ func (h *Handler) updateAdapter(w http.ResponseWriter, r *http.Request, scenario
 	}
 
 	updates := models.Adapter{
+		Name:         req.Name,
 		BehaviorMode: req.BehaviorMode,
 		Config:       req.Config,
 		Credentials:  req.Credentials,
