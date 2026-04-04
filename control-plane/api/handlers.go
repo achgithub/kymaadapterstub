@@ -253,14 +253,23 @@ func (h *Handler) addAdapter(w http.ResponseWriter, r *http.Request, scenarioID 
 	// Generate adapter ID
 	adapterID := scenarioID + "-" + strings.ToLower(req.Type) + "-" + fmt.Sprintf("%d", time.Now().Unix())
 
-	// For SFTP adapters, generate a stable SSH host key if one isn't already set
-	if req.Type == "SFTP" && req.Config.SSHHostKey == "" {
-		keyPEM, fingerprint, err := generateSSHHostKey()
-		if err != nil {
-			log.Printf("Warning: could not generate SSH host key: %v", err)
+	// For SFTP adapters, ensure an SSH host key and fingerprint are set
+	if req.Type == "SFTP" {
+		if req.Config.SSHHostKey == "" {
+			keyPEM, fingerprint, err := generateSSHHostKey()
+			if err != nil {
+				log.Printf("Warning: could not generate SSH host key: %v", err)
+			} else {
+				req.Config.SSHHostKey = keyPEM
+				req.Config.SSHHostKeyFingerprint = fingerprint
+			}
 		} else {
-			req.Config.SSHHostKey = keyPEM
-			req.Config.SSHHostKeyFingerprint = fingerprint
+			// Custom key provided — derive fingerprint from it
+			if fp, err := fingerprintFromPEM(req.Config.SSHHostKey); err != nil {
+				log.Printf("Warning: could not derive fingerprint from provided key: %v", err)
+			} else {
+				req.Config.SSHHostKeyFingerprint = fp
+			}
 		}
 	}
 
@@ -316,6 +325,19 @@ func (h *Handler) updateAdapter(w http.ResponseWriter, r *http.Request, scenario
 			log.Printf("Error deleting adapter resources for update: %v", err)
 		}
 		h.store.UpdateAdapterStatus(scenarioID, adapterID, "stopped")
+	}
+
+	// If an SFTP key is provided on update, recompute the fingerprint
+	if adapter.Type == "SFTP" && req.Config.SSHHostKey != "" {
+		if fp, err := fingerprintFromPEM(req.Config.SSHHostKey); err != nil {
+			log.Printf("Warning: could not derive fingerprint from provided key: %v", err)
+		} else {
+			req.Config.SSHHostKeyFingerprint = fp
+		}
+	} else if adapter.Type == "SFTP" && req.Config.SSHHostKey == "" {
+		// Key not provided in update — preserve existing key and fingerprint
+		req.Config.SSHHostKey = adapter.Config.SSHHostKey
+		req.Config.SSHHostKeyFingerprint = adapter.Config.SSHHostKeyFingerprint
 	}
 
 	updates := models.Adapter{
@@ -660,6 +682,24 @@ func generateSSHHostKey() (string, string, error) {
 	fingerprint := "SHA256:" + base64.StdEncoding.EncodeToString(hash[:])
 
 	return keyPEM, fingerprint, nil
+}
+
+// fingerprintFromPEM derives the SSH SHA256 fingerprint from a PEM-encoded RSA private key.
+func fingerprintFromPEM(keyPEM string) (string, error) {
+	block, _ := pem.Decode([]byte(keyPEM))
+	if block == nil {
+		return "", fmt.Errorf("invalid PEM block")
+	}
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("parse RSA key: %w", err)
+	}
+	pub, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("derive public key: %w", err)
+	}
+	hash := sha256.Sum256(pub.Marshal())
+	return "SHA256:" + base64.StdEncoding.EncodeToString(hash[:]), nil
 }
 
 // getAdapterLogs fetches recent pod logs for a running adapter.

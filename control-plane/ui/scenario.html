@@ -199,6 +199,11 @@
                             <small class="form-text text-muted">Leave blank to accept any password.</small>
                         </div>
                         <div class="mb-3">
+                            <label for="sftpHostKey" class="form-label">SSH Host Private Key (PEM) <span class="text-muted fw-normal">(optional)</span></label>
+                            <textarea class="form-control font-monospace" id="sftpHostKey" rows="3" placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END RSA PRIVATE KEY-----&#10;Leave blank to auto-generate"></textarea>
+                            <small class="form-text text-muted">Paste an existing key to share the same fingerprint across multiple SFTP adapters. Leave blank to auto-generate.</small>
+                        </div>
+                        <div class="mb-3">
                             <label for="sftpPublicKey" class="form-label">Authorized Public Key <span class="text-muted fw-normal">(optional)</span></label>
                             <textarea class="form-control font-monospace" id="sftpPublicKey" rows="2" placeholder="ssh-rsa AAAA... or leave blank to accept any public key"></textarea>
                             <small class="form-text text-muted">Paste CPI's SSH public key in authorized_keys format. If blank, any public key is accepted.</small>

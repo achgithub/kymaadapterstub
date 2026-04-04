@@ -178,6 +178,7 @@ async function createAdapter() {
         config = {
             files,
             auth_mode: behaviorMode === 'failure' ? 'failure' : 'success',
+            ssh_host_key: document.getElementById('sftpHostKey').value.trim(),
             ssh_public_key: document.getElementById('sftpPublicKey').value.trim(),
         };
     } else if (type === 'OData') {
@@ -352,12 +353,12 @@ function editAdapter(adapterId) {
             </div>`).join('');
         const fingerprintHtml = c.ssh_host_key_fingerprint
             ? `<div class="mb-3">
-                <label class="form-label">SSH Host Key Fingerprint</label>
-                <div class="input-group">
-                    <input type="text" class="form-control form-control-sm font-monospace" value="${escapeHtml(c.ssh_host_key_fingerprint)}" readonly>
-                    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="copyToClipboard('${escapeHtml(c.ssh_host_key_fingerprint)}')">Copy</button>
+                <label class="form-label text-muted small">Current Fingerprint</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control font-monospace" value="${escapeHtml(c.ssh_host_key_fingerprint)}" readonly>
+                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('${escapeHtml(c.ssh_host_key_fingerprint)}')">Copy</button>
                 </div>
-                <small class="form-text text-muted">Add this to your CPI SFTP channel to avoid host key warnings on reconnect.</small>
+                <small class="form-text text-muted">Add to CPI SFTP channel known hosts. Updates automatically when you change the key below.</small>
                </div>`
             : '';
         configHtml = `
@@ -369,6 +370,10 @@ function editAdapter(adapterId) {
             <div class="mb-3">
                 <label class="form-label">Password <span class="text-muted fw-normal">(leave blank to accept any)</span></label>
                 <input type="password" class="form-control" id="editSftpPassword" value="${escapeHtml(creds.password || '')}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">SSH Host Private Key (PEM) <span class="text-muted fw-normal">(optional — paste to share fingerprint across multiple SFTP adapters)</span></label>
+                <textarea class="form-control font-monospace" id="editSftpHostKey" rows="3" placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END RSA PRIVATE KEY-----&#10;Leave blank to keep existing key">${escapeHtml(c.ssh_host_key || '')}</textarea>
             </div>
             <div class="mb-3">
                 <label class="form-label">Authorized Public Key <span class="text-muted fw-normal">(optional)</span></label>
@@ -610,6 +615,7 @@ async function updateAdapter() {
         });
         config.files = files;
         config.auth_mode = behaviorMode === 'failure' ? 'failure' : 'success';
+        config.ssh_host_key = (document.getElementById('editSftpHostKey')?.value || '').trim();
         config.ssh_public_key = (document.getElementById('editSftpPublicKey')?.value || '').trim();
         credentials = {
             username: document.getElementById('editSftpUsername').value,
