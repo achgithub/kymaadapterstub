@@ -78,6 +78,8 @@ function displayScenario(scenario) {
     if (exportBtn) exportBtn.style.display = isGithub ? 'none' : 'inline-block';
     if (cloneBtn) cloneBtn.style.display = isGithub ? 'inline-block' : 'none';
     if (deleteBtn) deleteBtn.style.display = isGithub ? 'none' : 'inline-block';
+    const renameBtn = document.getElementById('renameBtn');
+    if (renameBtn) renameBtn.style.display = isGithub ? 'none' : 'inline-block';
 
     // Display adapters
     if (scenario.adapters.length === 0) {
@@ -752,6 +754,34 @@ async function deleteScenarioConfirm() {
     } catch (error) {
         alert(`Failed to delete scenario: ${error.message}`);
     }
+}
+
+function showRenameInput() {
+    document.getElementById('renameInput').value = currentScenario.name;
+    document.getElementById('scenarioName').style.display = 'none';
+    document.getElementById('renameBtn').style.display = 'none';
+    document.getElementById('renameForm').style.display = 'flex';
+    const input = document.getElementById('renameInput');
+    input.focus();
+    input.select();
+}
+
+async function saveRename() {
+    const newName = document.getElementById('renameInput').value.trim();
+    if (!newName) return;
+    try {
+        await api.updateScenario(currentScenario.id, newName);
+        cancelRename();
+        await loadScenario(currentScenario.id);
+    } catch (e) {
+        alert('Failed to rename: ' + e.message);
+    }
+}
+
+function cancelRename() {
+    document.getElementById('renameForm').style.display = 'none';
+    document.getElementById('scenarioName').style.display = '';
+    document.getElementById('renameBtn').style.display = '';
 }
 
 function addFileInput() {

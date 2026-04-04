@@ -317,12 +317,26 @@ async function importScenario() {
         return;
     }
 
+    // Check for name collision and prompt for a new name if needed
+    const existing = await api.listScenarios().catch(() => []);
+    let importName = data.name;
+    if (existing.some(s => s.name === importName)) {
+        const suggested = importName + ' (imported)';
+        importName = prompt(`A scenario named "${importName}" already exists.\nEnter a new name:`, suggested);
+        if (importName === null) return; // cancelled
+        importName = importName.trim();
+        if (!importName) {
+            alert('Please enter a name.');
+            return;
+        }
+    }
+
     const btn = document.getElementById('importBtn');
     btn.disabled = true;
     btn.textContent = 'Importing...';
 
     try {
-        const scenario = await api.createScenario(data.name, data.description || '');
+        const scenario = await api.createScenario(importName, data.description || '');
         for (const adapter of data.adapters) {
             await api.addAdapter(scenario.id, {
                 name: adapter.name,

@@ -24,7 +24,16 @@
             <div class="col-md-8">
                 <div class="card mb-4">
                     <div class="card-header bg-light">
-                        <h2 id="scenarioName" class="mb-0">Loading...</h2>
+                        <div class="d-flex align-items-center gap-2">
+                            <h2 id="scenarioName" class="mb-0">Loading...</h2>
+                            <button class="btn btn-sm btn-link text-muted p-0" id="renameBtn" onclick="showRenameInput()" style="display:none;" title="Rename scenario">✏️</button>
+                        </div>
+                        <div id="renameForm" style="display:none;" class="d-flex align-items-center gap-2 mt-2">
+                            <input type="text" class="form-control form-control-sm" id="renameInput" style="max-width:400px"
+                                onkeydown="if(event.key==='Enter') saveRename(); if(event.key==='Escape') cancelRename();">
+                            <button class="btn btn-sm btn-primary" onclick="saveRename()">Save</button>
+                            <button class="btn btn-sm btn-secondary" onclick="cancelRename()">Cancel</button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="row mb-3">
