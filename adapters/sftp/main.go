@@ -336,7 +336,10 @@ func handleConnection(conn net.Conn, sshConfig *ssh.ServerConfig, adapterID, con
 
 	sshConn, chans, reqs, err := ssh.NewServerConn(conn, sshConfig)
 	if err != nil {
-		log.Printf("SSH handshake error: %v", err)
+		// EOF = probe (k8s liveness/readiness) or client disconnect before handshake — not a real error
+		if err.Error() != "EOF" {
+			log.Printf("SSH handshake error: %v", err)
+		}
 		return
 	}
 	defer sshConn.Close()
