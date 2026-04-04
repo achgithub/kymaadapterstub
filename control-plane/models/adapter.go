@@ -10,7 +10,7 @@ type Adapter struct {
 	Config         AdapterConfig `json:"config"`
 	Status         string        `json:"status"`          // "stopped", "starting", "running"
 	IngressURL     string        `json:"ingress_url"`     // Generated after deployment
-	Credentials    *Credentials  `json:"credentials"`     // For SFTP
+	Credentials    *Credentials  `json:"credentials"`     // Inbound auth (HTTP stubs) or outbound auth (sender adapters)
 	DeploymentName string        `json:"deployment_name"` // K8s resource name
 	LastActivity   *time.Time    `json:"last_activity"`   // Last time a request was received
 }
@@ -31,4 +31,5 @@ type CreateAdapterRequest struct {
 type UpdateAdapterRequest struct {
 	BehaviorMode string        `json:"behavior_mode"`
 	Config       AdapterConfig `json:"config"`
+	Credentials  *Credentials  `json:"credentials"`
 }

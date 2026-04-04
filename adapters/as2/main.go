@@ -7,6 +7,8 @@ package main
 // to tell the sender the message was received successfully.
 
 import (
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +18,11 @@ import (
 	"strings"
 	"time"
 )
+
+type Credentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
 type AdapterConfig struct {
 	ID              string            `json:"id"`
@@ -28,6 +35,21 @@ type AdapterConfig struct {
 	ResponseDelayMs int               `json:"response_delay_ms"`
 	AS2From         string            `json:"as2_from"` // Expected sender ID
 	AS2To           string            `json:"as2_to"`   // Our AS2 ID
+	Credentials     *Credentials      `json:"credentials"`
+}
+
+// checkInboundAuth validates Basic Auth if credentials are configured.
+func checkInboundAuth(w http.ResponseWriter, r *http.Request, config *AdapterConfig) bool {
+	if config.Credentials == nil || config.Credentials.Username == "" {
+		return true
+	}
+	user, pass, ok := r.BasicAuth()
+	if !ok || user != config.Credentials.Username || pass != config.Credentials.Password {
+		w.Header().Set("WWW-Authenticate", `Basic realm="stub"`)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return false
+	}
+	return true
 }
 
 func main() {
@@ -79,6 +101,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		return
 	}
 
+	if !checkInboundAuth(w, r, config) {
+		return
+	}
+
 	// AS2 requires these headers
 	as2From := r.Header.Get("AS2-From")
 	as2To := r.Header.Get("AS2-To")
@@ -96,7 +122,6 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		return
 	}
 
-	// Read the message body (we don't need to process it, just acknowledge)
 	body, _ := io.ReadAll(r.Body)
 	log.Printf("AS2 message received: From=%s To=%s MsgID=%s Size=%d", as2From, as2To, messageID, len(body))
 
@@ -123,15 +148,27 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		return
 	}
 
-	// Return a proper synchronous MDN
+	// Compute MIC (Message Integrity Check) — SHA-1 of body, base64 encoded
+	h := sha1.New()
+	h.Write(body)
+	mic := base64.StdEncoding.EncodeToString(h.Sum(nil))
+
 	origMsgID := messageID
 	if origMsgID == "" {
 		origMsgID = "unknown"
 	}
 	boundary := "KYMA_AS2_MDN_BOUNDARY"
 	mdnBody := fmt.Sprintf(
-		"--%s\r\nContent-Type: text/plain\r\n\r\nThe AS2 message was received and processed successfully.\r\n--%s\r\nContent-Type: message/disposition-notification\r\n\r\nReporting-UA: KymaAdapterStub/1.0\r\nOriginal-Recipient: rfc822; %s\r\nFinal-Recipient: rfc822; %s\r\nOriginal-Message-ID: %s\r\nDisposition: automatic-action/MDN-sent-automatically; processed\r\n--%s--\r\n",
-		boundary, boundary, ourID, ourID, origMsgID, boundary,
+		"--%s\r\nContent-Type: text/plain\r\n\r\nThe AS2 message was received and processed successfully.\r\n"+
+			"--%s\r\nContent-Type: message/disposition-notification\r\n\r\n"+
+			"Reporting-UA: KymaAdapterStub/1.0\r\n"+
+			"Original-Recipient: rfc822; %s\r\n"+
+			"Final-Recipient: rfc822; %s\r\n"+
+			"Original-Message-ID: %s\r\n"+
+			"Disposition: automatic-action/MDN-sent-automatically; processed\r\n"+
+			"Received-content-MIC: %s, sha1\r\n"+
+			"--%s--\r\n",
+		boundary, boundary, ourID, ourID, origMsgID, mic, boundary,
 	)
 
 	w.Header().Set("AS2-Version", "1.2")
@@ -143,7 +180,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(mdnBody))
 
-	log.Printf("[POST] %s - 200 (MDN sent)", r.RequestURI)
+	log.Printf("[POST] %s - 200 (MDN sent, MIC=%s)", r.RequestURI, mic)
 }
 
 func fetchConfig(adapterID, controlPlaneURL string) (*AdapterConfig, error) {

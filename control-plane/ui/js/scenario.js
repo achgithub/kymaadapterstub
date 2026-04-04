@@ -181,12 +181,18 @@ async function createAdapter() {
             ssh_public_key: document.getElementById('sftpPublicKey').value.trim(),
         };
     } else if (type === 'OData') {
+        const odataUser = document.getElementById('odataInboundUser').value;
+        const odataPass = document.getElementById('odataInboundPass').value;
+        if (odataUser) credentials = { username: odataUser, password: odataPass };
         config = {
             status_code: parseInt(document.getElementById('odataStatusCode').value),
             response_body: document.getElementById('odataBody').value,
             response_headers: {},
         };
     } else if (type === 'SOAP' || type === 'XI') {
+        const soapUser = document.getElementById('soapInboundUser').value;
+        const soapPass = document.getElementById('soapInboundPass').value;
+        if (soapUser) credentials = { username: soapUser, password: soapPass };
         config = {
             status_code: parseInt(document.getElementById('soapStatusCode').value),
             response_body: document.getElementById('soapBody').value,
@@ -194,6 +200,9 @@ async function createAdapter() {
             response_headers: {},
         };
     } else if (type === 'AS2') {
+        const as2User = document.getElementById('as2InboundUser').value;
+        const as2Pass = document.getElementById('as2InboundPass').value;
+        if (as2User) credentials = { username: as2User, password: as2Pass };
         config = {
             status_code: parseInt(document.getElementById('as2StatusCode').value),
             response_body: document.getElementById('as2Body').value,
@@ -202,6 +211,9 @@ async function createAdapter() {
             response_headers: {},
         };
     } else if (type === 'AS4') {
+        const as4User = document.getElementById('as4InboundUser').value;
+        const as4Pass = document.getElementById('as4InboundPass').value;
+        if (as4User) credentials = { username: as4User, password: as4Pass };
         config = {
             status_code: parseInt(document.getElementById('as4StatusCode').value),
             response_body: document.getElementById('as4Body').value,
@@ -209,13 +221,21 @@ async function createAdapter() {
             response_headers: {},
         };
     } else if (type === 'EDIFACT') {
+        const ediUser = document.getElementById('ediInboundUser').value;
+        const ediPass = document.getElementById('ediInboundPass').value;
+        if (ediUser) credentials = { username: ediUser, password: ediPass };
         config = {
             status_code: parseInt(document.getElementById('ediStatusCode').value),
             response_body: document.getElementById('ediBody').value,
             edi_standard: document.getElementById('ediStandard').value,
+            edi_sender_id: document.getElementById('ediSenderID').value,
+            edi_receiver_id: document.getElementById('ediReceiverID').value,
             response_headers: {},
         };
     } else if (SENDER_TYPES.includes(type)) {
+        const senderUser = document.getElementById('senderUsername').value;
+        const senderPass = document.getElementById('senderPassword').value;
+        if (senderUser) credentials = { username: senderUser, password: senderPass };
         try {
             config = {
                 target_url: document.getElementById('senderTargetURL').value,
@@ -277,7 +297,7 @@ function editAdapter(adapterId) {
     const c = adapter.config || {};
     let configHtml = '';
 
-    if (adapter.type === 'REST' || adapter.type === 'OData') {
+    if (adapter.type === 'REST') {
         configHtml = `
             <div class="mb-3">
                 <label class="form-label">Status Code</label>
@@ -290,6 +310,29 @@ function editAdapter(adapterId) {
             <div class="mb-3">
                 <label class="form-label">Response Headers (JSON)</label>
                 <textarea class="form-control" id="editHeaders" rows="2">${escapeHtml(JSON.stringify(c.response_headers || {}, null, 2))}</textarea>
+            </div>`;
+    } else if (adapter.type === 'OData') {
+        const creds = adapter.credentials || {};
+        configHtml = `
+            <div class="mb-3">
+                <label class="form-label">Status Code</label>
+                <input type="number" class="form-control" id="editStatusCode" value="${c.status_code || 200}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Response Body</label>
+                <textarea class="form-control" id="editBody" rows="5">${escapeHtml(c.response_body || '')}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Response Headers (JSON)</label>
+                <textarea class="form-control" id="editHeaders" rows="2">${escapeHtml(JSON.stringify(c.response_headers || {}, null, 2))}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Inbound Username <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="text" class="form-control" id="editInboundUser" value="${escapeHtml(creds.username || '')}" placeholder="Leave blank to accept any">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Inbound Password</label>
+                <input type="password" class="form-control" id="editInboundPass" value="${escapeHtml(creds.password || '')}">
             </div>`;
     } else if (adapter.type === 'SFTP') {
         const files = (c.files || []).map(f => `
@@ -329,6 +372,7 @@ function editAdapter(adapterId) {
                 <button type="button" class="btn btn-sm btn-secondary mt-2" onclick="addEditFileInput()">+ Add File</button>
             </div>`;
     } else if (adapter.type === 'SOAP' || adapter.type === 'XI') {
+        const creds = adapter.credentials || {};
         configHtml = `
             <div class="mb-3">
                 <label class="form-label">SOAP Version</label>
@@ -344,8 +388,17 @@ function editAdapter(adapterId) {
             <div class="mb-3">
                 <label class="form-label">Response Body (SOAP XML)</label>
                 <textarea class="form-control" id="editBody" rows="5">${escapeHtml(c.response_body || '')}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Inbound Username <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="text" class="form-control" id="editInboundUser" value="${escapeHtml(creds.username || '')}" placeholder="Leave blank to accept any">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Inbound Password</label>
+                <input type="password" class="form-control" id="editInboundPass" value="${escapeHtml(creds.password || '')}">
             </div>`;
     } else if (adapter.type === 'AS2') {
+        const creds = adapter.credentials || {};
         configHtml = `
             <div class="mb-3">
                 <label class="form-label">AS2-From (expected sender ID)</label>
@@ -362,8 +415,17 @@ function editAdapter(adapterId) {
             <div class="mb-3">
                 <label class="form-label">Custom Response Body</label>
                 <textarea class="form-control" id="editBody" rows="3">${escapeHtml(c.response_body || '')}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Inbound Username <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="text" class="form-control" id="editInboundUser" value="${escapeHtml(creds.username || '')}" placeholder="Leave blank to accept any">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Inbound Password</label>
+                <input type="password" class="form-control" id="editInboundPass" value="${escapeHtml(creds.password || '')}">
             </div>`;
     } else if (adapter.type === 'AS4') {
+        const creds = adapter.credentials || {};
         configHtml = `
             <div class="mb-3">
                 <label class="form-label">Our Party ID (ebMS3)</label>
@@ -376,8 +438,17 @@ function editAdapter(adapterId) {
             <div class="mb-3">
                 <label class="form-label">Custom Response Body (SOAP XML)</label>
                 <textarea class="form-control" id="editBody" rows="3">${escapeHtml(c.response_body || '')}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Inbound Username <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="text" class="form-control" id="editInboundUser" value="${escapeHtml(creds.username || '')}" placeholder="Leave blank to accept any">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Inbound Password</label>
+                <input type="password" class="form-control" id="editInboundPass" value="${escapeHtml(creds.password || '')}">
             </div>`;
     } else if (adapter.type === 'EDIFACT') {
+        const creds = adapter.credentials || {};
         configHtml = `
             <div class="mb-3">
                 <label class="form-label">EDI Standard</label>
@@ -388,14 +459,31 @@ function editAdapter(adapterId) {
                 </select>
             </div>
             <div class="mb-3">
+                <label class="form-label">ACK Sender ID <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="text" class="form-control" id="editEdiSenderID" value="${escapeHtml(c.edi_sender_id || '')}" placeholder="STUBSND">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">ACK Receiver ID <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="text" class="form-control" id="editEdiReceiverID" value="${escapeHtml(c.edi_receiver_id || '')}" placeholder="STUBRCV">
+            </div>
+            <div class="mb-3">
                 <label class="form-label">Status Code</label>
                 <input type="number" class="form-control" id="editStatusCode" value="${c.status_code || 200}">
             </div>
             <div class="mb-3">
                 <label class="form-label">Custom Acknowledgement Body</label>
                 <textarea class="form-control" id="editBody" rows="3">${escapeHtml(c.response_body || '')}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Inbound Username <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="text" class="form-control" id="editInboundUser" value="${escapeHtml(creds.username || '')}" placeholder="Leave blank to accept any">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Inbound Password</label>
+                <input type="password" class="form-control" id="editInboundPass" value="${escapeHtml(creds.password || '')}">
             </div>`;
     } else if (SENDER_TYPES.includes(adapter.type)) {
+        const creds = adapter.credentials || {};
         const csrfChecked = c.csrf_enabled ? 'checked' : '';
         const csrfFieldsDisplay = c.csrf_enabled ? 'block' : 'none';
         configHtml = `
@@ -441,6 +529,14 @@ function editAdapter(adapterId) {
                         <option value="GET" ${c.csrf_fetch_method === 'GET' ? 'selected' : ''}>GET</option>
                     </select>
                 </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">CPI Username <span class="text-muted fw-normal">(optional — for Basic Auth to CPI endpoint)</span></label>
+                <input type="text" class="form-control" id="editSenderUsername" value="${escapeHtml(creds.username || '')}" placeholder="e.g. sb-...">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">CPI Password</label>
+                <input type="password" class="form-control" id="editSenderPassword" value="${escapeHtml(creds.password || '')}">
             </div>`;
     }
 
@@ -473,8 +569,9 @@ async function updateAdapter() {
 
     const behaviorMode = document.getElementById('editBehaviorMode').value;
     let config = { ...adapter.config };
+    let credentials = null;
 
-    if (adapter.type === 'REST' || adapter.type === 'OData') {
+    if (adapter.type === 'REST') {
         config.status_code = parseInt(document.getElementById('editStatusCode').value);
         config.response_body = document.getElementById('editBody').value;
         try {
@@ -483,6 +580,18 @@ async function updateAdapter() {
             alert('Invalid JSON in headers');
             return;
         }
+    } else if (adapter.type === 'OData') {
+        config.status_code = parseInt(document.getElementById('editStatusCode').value);
+        config.response_body = document.getElementById('editBody').value;
+        try {
+            config.response_headers = JSON.parse(document.getElementById('editHeaders').value || '{}');
+        } catch (e) {
+            alert('Invalid JSON in headers');
+            return;
+        }
+        const user = document.getElementById('editInboundUser').value;
+        const pass = document.getElementById('editInboundPass').value;
+        credentials = { username: user, password: pass };
     } else if (adapter.type === 'SFTP') {
         const files = [];
         document.querySelectorAll('#editFilesList .file-input-group').forEach(group => {
@@ -497,19 +606,33 @@ async function updateAdapter() {
         config.status_code = parseInt(document.getElementById('editStatusCode').value);
         config.response_body = document.getElementById('editBody').value;
         config.soap_version = document.getElementById('editSoapVersion').value;
+        const user = document.getElementById('editInboundUser').value;
+        const pass = document.getElementById('editInboundPass').value;
+        credentials = { username: user, password: pass };
     } else if (adapter.type === 'AS2') {
         config.status_code = parseInt(document.getElementById('editStatusCode').value);
         config.response_body = document.getElementById('editBody').value;
         config.as2_from = document.getElementById('editAs2From').value;
         config.as2_to = document.getElementById('editAs2To').value;
+        const user = document.getElementById('editInboundUser').value;
+        const pass = document.getElementById('editInboundPass').value;
+        credentials = { username: user, password: pass };
     } else if (adapter.type === 'AS4') {
         config.status_code = parseInt(document.getElementById('editStatusCode').value);
         config.response_body = document.getElementById('editBody').value;
         config.as4_party_id = document.getElementById('editAs4PartyId').value;
+        const user = document.getElementById('editInboundUser').value;
+        const pass = document.getElementById('editInboundPass').value;
+        credentials = { username: user, password: pass };
     } else if (adapter.type === 'EDIFACT') {
         config.status_code = parseInt(document.getElementById('editStatusCode').value);
         config.response_body = document.getElementById('editBody').value;
         config.edi_standard = document.getElementById('editEdiStandard').value;
+        config.edi_sender_id = document.getElementById('editEdiSenderID').value;
+        config.edi_receiver_id = document.getElementById('editEdiReceiverID').value;
+        const user = document.getElementById('editInboundUser').value;
+        const pass = document.getElementById('editInboundPass').value;
+        credentials = { username: user, password: pass };
     } else if (SENDER_TYPES.includes(adapter.type)) {
         config.target_url = document.getElementById('editSenderTargetURL').value;
         config.method = document.getElementById('editSenderMethod').value;
@@ -523,12 +646,16 @@ async function updateAdapter() {
             alert('Invalid JSON in request headers');
             return;
         }
+        const user = document.getElementById('editSenderUsername').value;
+        const pass = document.getElementById('editSenderPassword').value;
+        credentials = { username: user, password: pass };
     }
 
     try {
         await api.updateAdapter(currentScenario.id, adapterId, {
             behavior_mode: behaviorMode,
             config,
+            credentials,
         });
         bootstrap.Modal.getInstance(document.getElementById('editAdapterModal')).hide();
         await loadScenario(currentScenario.id);

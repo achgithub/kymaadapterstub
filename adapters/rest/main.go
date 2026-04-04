@@ -10,15 +10,34 @@ import (
 	"time"
 )
 
+type Credentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type AdapterConfig struct {
-	ID               string            `json:"id"`
-	Name             string            `json:"name"`
-	Type             string            `json:"type"`
-	BehaviorMode     string            `json:"behavior_mode"`
-	StatusCode       int               `json:"status_code"`
-	ResponseBody     string            `json:"response_body"`
-	ResponseHeaders  map[string]string `json:"response_headers"`
-	Credentials      interface{}       `json:"credentials"`
+	ID              string            `json:"id"`
+	Name            string            `json:"name"`
+	Type            string            `json:"type"`
+	BehaviorMode    string            `json:"behavior_mode"`
+	StatusCode      int               `json:"status_code"`
+	ResponseBody    string            `json:"response_body"`
+	ResponseHeaders map[string]string `json:"response_headers"`
+	Credentials     *Credentials      `json:"credentials"`
+}
+
+// checkInboundAuth validates Basic Auth if credentials are configured.
+func checkInboundAuth(w http.ResponseWriter, r *http.Request, config *AdapterConfig) bool {
+	if config.Credentials == nil || config.Credentials.Username == "" {
+		return true
+	}
+	user, pass, ok := r.BasicAuth()
+	if !ok || user != config.Credentials.Username || pass != config.Credentials.Password {
+		w.Header().Set("WWW-Authenticate", `Basic realm="stub"`)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return false
+	}
+	return true
 }
 
 func main() {
@@ -79,6 +98,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 	if err != nil {
 		log.Printf("Error fetching config: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to fetch configuration: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if !checkInboundAuth(w, r, config) {
 		return
 	}
 

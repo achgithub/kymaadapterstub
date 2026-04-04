@@ -16,6 +16,11 @@ import (
 	"time"
 )
 
+type Credentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type AdapterConfig struct {
 	ID              string            `json:"id"`
 	Name            string            `json:"name"`
@@ -26,6 +31,21 @@ type AdapterConfig struct {
 	ResponseHeaders map[string]string `json:"response_headers"`
 	ResponseDelayMs int               `json:"response_delay_ms"`
 	AS4PartyID      string            `json:"as4_party_id"`
+	Credentials     *Credentials      `json:"credentials"`
+}
+
+// checkInboundAuth validates Basic Auth if credentials are configured.
+func checkInboundAuth(w http.ResponseWriter, r *http.Request, config *AdapterConfig) bool {
+	if config.Credentials == nil || config.Credentials.Username == "" {
+		return true
+	}
+	user, pass, ok := r.BasicAuth()
+	if !ok || user != config.Credentials.Username || pass != config.Credentials.Password {
+		w.Header().Set("WWW-Authenticate", `Basic realm="stub"`)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return false
+	}
+	return true
 }
 
 // ebMS3 namespace used in AS4 messages
@@ -102,6 +122,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 	if err != nil {
 		log.Printf("Error fetching config: %v", err)
 		http.Error(w, "Failed to fetch configuration", http.StatusInternalServerError)
+		return
+	}
+
+	if !checkInboundAuth(w, r, config) {
 		return
 	}
 

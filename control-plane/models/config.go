@@ -25,7 +25,9 @@ type AdapterConfig struct {
 	AS4PartyID string `json:"as4_party_id"` // Our ebMS3 PartyId
 
 	// EDIFACT/X12 specific
-	EDIStandard string `json:"edi_standard"` // "EDIFACT" or "X12"
+	EDIStandard  string `json:"edi_standard"`   // "EDIFACT" or "X12"
+	EDISenderID  string `json:"edi_sender_id"`  // ACK sender ID (default: STUBSND)
+	EDIReceiverID string `json:"edi_receiver_id"` // ACK receiver ID (default: STUBRCV)
 
 	// Sender adapter specific (REST-SENDER, SOAP-SENDER, XI-SENDER)
 	TargetURL      string            `json:"target_url"`

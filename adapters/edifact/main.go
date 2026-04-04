@@ -19,6 +19,11 @@ import (
 	"time"
 )
 
+type Credentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type AdapterConfig struct {
 	ID              string            `json:"id"`
 	Name            string            `json:"name"`
@@ -28,15 +33,25 @@ type AdapterConfig struct {
 	ResponseBody    string            `json:"response_body"`
 	ResponseHeaders map[string]string `json:"response_headers"`
 	ResponseDelayMs int               `json:"response_delay_ms"`
-	EDIStandard     string            `json:"edi_standard"` // "EDIFACT" or "X12"
+	EDIStandard     string            `json:"edi_standard"`   // "EDIFACT" or "X12"
+	EDISenderID     string            `json:"edi_sender_id"`  // ACK sender ID (default: STUBSND)
+	EDIReceiverID   string            `json:"edi_receiver_id"` // ACK receiver ID (default: STUBRCV)
+	Credentials     *Credentials      `json:"credentials"`
 }
 
-// CONTRL is the EDIFACT functional acknowledgement
-// UCI+<interchange-ref>+<sender>:<qual>+<receiver>:<qual>+8 means "Accepted"
-const defaultEDIFACTAck = "UNB+UNOA:3+STUBRCV:1+STUBSND:1+%s+00001'\nUNH+1+CONTRL:3:1:UN'\nUCI+00001+STUBSND:1+STUBRCV:1+8'\nUNT+2+1'\nUNZ+1+00001'\n"
-
-// 997 is the X12 Functional Acknowledgement
-const defaultX12Ack = "ISA*00*          *00*          *ZZ*STUBRCV        *ZZ*STUBSND        *%s*^*00501*000000001*0*P*:~\nGS*FA*STUBRCV*STUBSND*%s*1*X*005010X231A1~\nST*997*0001~\nAK1*ST*1~\nAK9*A*1*1*1~\nSE*4*0001~\nGE*1*1~\nIEA*1*000000001~\n"
+// checkInboundAuth validates Basic Auth if credentials are configured.
+func checkInboundAuth(w http.ResponseWriter, r *http.Request, config *AdapterConfig) bool {
+	if config.Credentials == nil || config.Credentials.Username == "" {
+		return true
+	}
+	user, pass, ok := r.BasicAuth()
+	if !ok || user != config.Credentials.Username || pass != config.Credentials.Password {
+		w.Header().Set("WWW-Authenticate", `Basic realm="stub"`)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return false
+	}
+	return true
+}
 
 func main() {
 	adapterID := os.Getenv("ADAPTER_ID")
@@ -87,6 +102,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		return
 	}
 
+	if !checkInboundAuth(w, r, config) {
+		return
+	}
+
 	body, _ := io.ReadAll(r.Body)
 	bodyStr := strings.TrimSpace(string(body))
 
@@ -98,7 +117,6 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		} else if strings.HasPrefix(bodyStr, "ISA") || strings.HasPrefix(bodyStr, "isa") {
 			standard = "X12"
 		} else {
-			// Unknown format — accept it anyway (stub mode)
 			standard = "EDIFACT"
 			log.Printf("Warning: could not detect EDI standard from body, defaulting to EDIFACT")
 		}
@@ -127,17 +145,35 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		return
 	}
 
-	// Return default acknowledgement
+	// Use configurable ACK IDs, falling back to defaults
+	senderID := config.EDISenderID
+	if senderID == "" {
+		senderID = "STUBSND"
+	}
+	receiverID := config.EDIReceiverID
+	if receiverID == "" {
+		receiverID = "STUBRCV"
+	}
+
 	now := time.Now().UTC()
 	var ackBody string
 	if standard == "X12" {
 		dateStr := now.Format("060102")
 		timeStr := now.Format("1504")
-		ackBody = fmt.Sprintf(defaultX12Ack, dateStr+"*"+timeStr, now.Format("20060102"))
+		ackBody = fmt.Sprintf(
+			"ISA*00*          *00*          *ZZ*%-15s*ZZ*%-15s*%s*^*00501*000000001*0*P*:~\n"+
+				"GS*FA*%s*%s*%s*1*X*005010X231A1~\n"+
+				"ST*997*0001~\nAK1*ST*1~\nAK9*A*1*1*1~\nSE*4*0001~\nGE*1*1~\nIEA*1*000000001~\n",
+			receiverID, senderID, dateStr+"*"+timeStr,
+			receiverID, senderID, now.Format("20060102"),
+		)
 		w.Header().Set("Content-Type", "application/edi-x12")
 	} else {
 		dateStr := now.Format("060102") + ":" + now.Format("1504")
-		ackBody = fmt.Sprintf(defaultEDIFACTAck, dateStr)
+		ackBody = fmt.Sprintf(
+			"UNB+UNOA:3+%s:1+%s:1+%s+00001'\nUNH+1+CONTRL:3:1:UN'\nUCI+00001+%s:1+%s:1+8'\nUNT+2+1'\nUNZ+1+00001'\n",
+			receiverID, senderID, dateStr, senderID, receiverID,
+		)
 		w.Header().Set("Content-Type", "application/edifact")
 	}
 

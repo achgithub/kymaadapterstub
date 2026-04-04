@@ -15,6 +15,11 @@ import (
 	"time"
 )
 
+type Credentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type AdapterConfig struct {
 	ID              string            `json:"id"`
 	Name            string            `json:"name"`
@@ -25,6 +30,7 @@ type AdapterConfig struct {
 	ResponseHeaders map[string]string `json:"response_headers"`
 	SoapVersion     string            `json:"soap_version"`
 	ResponseDelayMs int               `json:"response_delay_ms"`
+	Credentials     *Credentials      `json:"credentials"`
 }
 
 // SAP XI uses SOAP 1.1 with the XI message namespace in the header block
@@ -34,6 +40,20 @@ const defaultXIResponse = `<?xml version="1.0" encoding="UTF-8"?><SOAP:Envelope 
 
 func soapFault(message string) string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><soap:Fault><faultcode>soap:Client</faultcode><faultstring>%s</faultstring></soap:Fault></soap:Body></soap:Envelope>`, message)
+}
+
+// checkInboundAuth validates Basic Auth if credentials are configured.
+func checkInboundAuth(w http.ResponseWriter, r *http.Request, config *AdapterConfig) bool {
+	if config.Credentials == nil || config.Credentials.Username == "" {
+		return true
+	}
+	user, pass, ok := r.BasicAuth()
+	if !ok || user != config.Credentials.Username || pass != config.Credentials.Password {
+		w.Header().Set("WWW-Authenticate", `Basic realm="stub"`)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return false
+	}
+	return true
 }
 
 func main() {
@@ -80,6 +100,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		return
 	}
 
+	if !checkInboundAuth(w, r, config) {
+		return
+	}
+
 	const ct = "text/xml; charset=utf-8"
 
 	if r.Method == http.MethodPost {
@@ -101,7 +125,6 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 			return
 		}
 
-		// XI messages must contain the SAP PI/XI namespace in the header
 		if !strings.Contains(bodyStr, xiNamespace) && !strings.Contains(bodyStr, "xi:Main") && !strings.Contains(bodyStr, "XI/Message") {
 			log.Printf("Warning: XI headers not found in request — accepting anyway (stub mode)")
 		}
@@ -120,15 +143,23 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 
 	statusCode := config.StatusCode
 	if statusCode == 0 {
-		statusCode = 200
+		// XI 3.1 push expects 202 Accepted; default to 202 unless overridden
+		statusCode = 202
 	}
 	responseBody := config.ResponseBody
 	if responseBody == "" {
-		responseBody = defaultXIResponse
+		if statusCode == 202 {
+			// XI 3.1 async: empty body with 202
+			responseBody = ""
+		} else {
+			responseBody = defaultXIResponse
+		}
 	}
 
 	w.WriteHeader(statusCode)
-	w.Write([]byte(responseBody))
+	if responseBody != "" {
+		w.Write([]byte(responseBody))
+	}
 	log.Printf("[%s] %s - %d", r.Method, r.RequestURI, statusCode)
 }
 

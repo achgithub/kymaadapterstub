@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+type Credentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type AdapterConfig struct {
 	ID              string            `json:"id"`
 	Name            string            `json:"name"`
@@ -18,7 +23,21 @@ type AdapterConfig struct {
 	StatusCode      int               `json:"status_code"`
 	ResponseBody    string            `json:"response_body"`
 	ResponseHeaders map[string]string `json:"response_headers"`
-	Credentials     interface{}       `json:"credentials"`
+	Credentials     *Credentials      `json:"credentials"`
+}
+
+// checkInboundAuth validates Basic Auth if credentials are configured.
+func checkInboundAuth(w http.ResponseWriter, r *http.Request, config *AdapterConfig) bool {
+	if config.Credentials == nil || config.Credentials.Username == "" {
+		return true
+	}
+	user, pass, ok := r.BasicAuth()
+	if !ok || user != config.Credentials.Username || pass != config.Credentials.Password {
+		w.Header().Set("WWW-Authenticate", `Basic realm="stub"`)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return false
+	}
+	return true
 }
 
 func main() {
@@ -81,19 +100,23 @@ func reportActivity(adapterID, controlPlaneURL string) {
 func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPlaneURL string, client *http.Client) {
 	reportActivity(adapterID, controlPlaneURL)
 
-	// CSRF token pre-fetch: CPI sends X-CSRF-Token: Fetch before write operations.
-	// Return a token so CPI can proceed with the actual request.
-	if r.Header.Get("X-CSRF-Token") == "Fetch" {
-		w.Header().Set("X-CSRF-Token", "stub-csrf-token")
-		log.Printf("[%s] %s - CSRF token fetch", r.Method, r.RequestURI)
-	}
-
 	// Fetch configuration from control plane
 	config, err := fetchConfig(adapterID, controlPlaneURL, client)
 	if err != nil {
 		log.Printf("Error fetching config: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to fetch configuration: %v", err), http.StatusInternalServerError)
 		return
+	}
+
+	if !checkInboundAuth(w, r, config) {
+		return
+	}
+
+	// CSRF token pre-fetch: CPI sends X-CSRF-Token: Fetch before write operations.
+	// Return a token so CPI can proceed with the actual request.
+	if r.Header.Get("X-CSRF-Token") == "Fetch" {
+		w.Header().Set("X-CSRF-Token", "stub-csrf-token")
+		log.Printf("[%s] %s - CSRF token fetch", r.Method, r.RequestURI)
 	}
 
 	// Set response headers
@@ -117,6 +140,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 }
 
 func handleMetadata(w http.ResponseWriter, r *http.Request, adapterID, controlPlaneURL string, client *http.Client) {
+	config, err := fetchConfig(adapterID, controlPlaneURL, client)
+	if err != nil {
+		log.Printf("Error fetching config: %v", err)
+		http.Error(w, "Failed to fetch configuration", http.StatusInternalServerError)
+		return
+	}
+
+	if !checkInboundAuth(w, r, config) {
+		return
+	}
+
 	// CSRF token pre-fetch: CPI targets /$metadata for the preflight HEAD request.
 	if r.Header.Get("X-CSRF-Token") == "Fetch" {
 		w.Header().Set("X-CSRF-Token", "stub-csrf-token")

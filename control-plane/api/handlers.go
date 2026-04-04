@@ -321,6 +321,7 @@ func (h *Handler) updateAdapter(w http.ResponseWriter, r *http.Request, scenario
 	updates := models.Adapter{
 		BehaviorMode: req.BehaviorMode,
 		Config:       req.Config,
+		Credentials:  req.Credentials,
 	}
 
 	adapter, err = h.store.UpdateAdapter(scenarioID, adapterID, updates)
@@ -591,6 +592,8 @@ func (h *Handler) HandleAdapterConfig(w http.ResponseWriter, r *http.Request) {
 					"as2_to":                  adapter.Config.AS2To,
 					"as4_party_id":            adapter.Config.AS4PartyID,
 					"edi_standard":            adapter.Config.EDIStandard,
+					"edi_sender_id":           adapter.Config.EDISenderID,
+					"edi_receiver_id":         adapter.Config.EDIReceiverID,
 					"target_url":              adapter.Config.TargetURL,
 					"method":                  adapter.Config.Method,
 					"request_body":            adapter.Config.RequestBody,

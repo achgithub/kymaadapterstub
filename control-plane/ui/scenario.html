@@ -221,6 +221,16 @@
                             <label for="odataBody" class="form-label">Response Body (XML)</label>
                             <textarea class="form-control" id="odataBody" rows="4" placeholder="<feed>...</feed>"></textarea>
                         </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label for="odataInboundUser" class="form-label">Inbound Username <span class="text-muted fw-normal">(optional)</span></label>
+                                <input type="text" class="form-control" id="odataInboundUser" placeholder="Leave blank to accept any">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="odataInboundPass" class="form-label">Inbound Password</label>
+                                <input type="password" class="form-control" id="odataInboundPass">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- SOAP / XI Adapter Config (shared) -->
@@ -240,6 +250,16 @@
                         <div class="mb-3">
                             <label for="soapBody" class="form-label">Response Body (SOAP XML)</label>
                             <textarea class="form-control" id="soapBody" rows="5" placeholder="Leave blank for default SOAP success envelope"></textarea>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label for="soapInboundUser" class="form-label">Inbound Username <span class="text-muted fw-normal">(optional)</span></label>
+                                <input type="text" class="form-control" id="soapInboundUser" placeholder="Leave blank to accept any">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="soapInboundPass" class="form-label">Inbound Password</label>
+                                <input type="password" class="form-control" id="soapInboundPass">
+                            </div>
                         </div>
                     </div>
 
@@ -263,6 +283,16 @@
                             <label for="as2Body" class="form-label">Custom Response Body</label>
                             <textarea class="form-control" id="as2Body" rows="3" placeholder="Leave blank to return a standard MDN acknowledgement"></textarea>
                         </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label for="as2InboundUser" class="form-label">Inbound Username <span class="text-muted fw-normal">(optional)</span></label>
+                                <input type="text" class="form-control" id="as2InboundUser" placeholder="Leave blank to accept any">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="as2InboundPass" class="form-label">Inbound Password</label>
+                                <input type="password" class="form-control" id="as2InboundPass">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- AS4 Adapter Config -->
@@ -280,6 +310,16 @@
                             <label for="as4Body" class="form-label">Custom Response Body (SOAP XML)</label>
                             <textarea class="form-control" id="as4Body" rows="3" placeholder="Leave blank to return a standard AS4 Receipt Signal"></textarea>
                         </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label for="as4InboundUser" class="form-label">Inbound Username <span class="text-muted fw-normal">(optional)</span></label>
+                                <input type="text" class="form-control" id="as4InboundUser" placeholder="Leave blank to accept any">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="as4InboundPass" class="form-label">Inbound Password</label>
+                                <input type="password" class="form-control" id="as4InboundPass">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- EDIFACT / X12 Adapter Config -->
@@ -293,6 +333,16 @@
                                 <option value="X12">X12 (ANSI)</option>
                             </select>
                         </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label for="ediSenderID" class="form-label">ACK Sender ID <span class="text-muted fw-normal">(optional)</span></label>
+                                <input type="text" class="form-control" id="ediSenderID" placeholder="STUBSND">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="ediReceiverID" class="form-label">ACK Receiver ID <span class="text-muted fw-normal">(optional)</span></label>
+                                <input type="text" class="form-control" id="ediReceiverID" placeholder="STUBRCV">
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label for="ediStatusCode" class="form-label">Status Code</label>
                             <input type="number" class="form-control" id="ediStatusCode" value="200">
@@ -300,6 +350,16 @@
                         <div class="mb-3">
                             <label for="ediBody" class="form-label">Custom Acknowledgement Body</label>
                             <textarea class="form-control" id="ediBody" rows="3" placeholder="Leave blank to return auto-generated CONTRL (EDIFACT) or 997 (X12)"></textarea>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label for="ediInboundUser" class="form-label">Inbound Username <span class="text-muted fw-normal">(optional)</span></label>
+                                <input type="text" class="form-control" id="ediInboundUser" placeholder="Leave blank to accept any">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="ediInboundPass" class="form-label">Inbound Password</label>
+                                <input type="password" class="form-control" id="ediInboundPass">
+                            </div>
                         </div>
                     </div>
 
@@ -313,6 +373,17 @@
                             <label for="senderTargetURL" class="form-label">Target URL</label>
                             <input type="text" class="form-control" id="senderTargetURL" placeholder="https://target-system/endpoint">
                         </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label for="senderUsername" class="form-label">CPI Username <span class="text-muted fw-normal">(optional)</span></label>
+                                <input type="text" class="form-control" id="senderUsername" placeholder="e.g. sb-...">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="senderPassword" class="form-label">CPI Password</label>
+                                <input type="password" class="form-control" id="senderPassword">
+                            </div>
+                        </div>
+                        <small class="form-text text-muted d-block mb-3">CPI sender endpoints require Basic Auth (ESBMessaging.send role). If set, Authorization header is added automatically.</small>
                         <div class="mb-3">
                             <label for="senderMethod" class="form-label">HTTP Method</label>
                             <select class="form-select" id="senderMethod">
@@ -327,8 +398,8 @@
                             <textarea class="form-control" id="senderBody" rows="4" placeholder="Request payload to send"></textarea>
                         </div>
                         <div class="mb-3">
-                            <label for="senderHeaders" class="form-label">Request Headers (JSON)</label>
-                            <textarea class="form-control" id="senderHeaders" rows="2" placeholder='{"Authorization": "Bearer ..."}'></textarea>
+                            <label for="senderHeaders" class="form-label">Additional Request Headers (JSON)</label>
+                            <textarea class="form-control" id="senderHeaders" rows="2" placeholder='{"X-Custom-Header": "value"}'></textarea>
                         </div>
                         <div class="mb-3">
                             <div class="form-check">

@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+type Credentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type AdapterConfig struct {
 	ID             string            `json:"id"`
 	Name           string            `json:"name"`
@@ -20,6 +25,7 @@ type AdapterConfig struct {
 	Method         string            `json:"method"`          // HTTP method, default POST
 	RequestBody    string            `json:"request_body"`    // payload to send
 	RequestHeaders map[string]string `json:"request_headers"` // additional headers
+	Credentials    *Credentials      `json:"credentials"`     // outbound Basic Auth for CPI endpoints
 
 	// CSRF token pre-fetch
 	CSRFEnabled     bool   `json:"csrf_enabled"`
@@ -122,7 +128,9 @@ func handleTrigger(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		fetchReq, err := http.NewRequest(fetchMethod, fetchURL, nil)
 		if err == nil {
 			fetchReq.Header.Set("X-CSRF-Token", "Fetch")
-			// Forward auth headers on the fetch too
+			if config.Credentials != nil && config.Credentials.Username != "" {
+				fetchReq.SetBasicAuth(config.Credentials.Username, config.Credentials.Password)
+			}
 			for k, v := range config.RequestHeaders {
 				fetchReq.Header.Set(k, v)
 			}
@@ -163,6 +171,11 @@ func handleTrigger(w http.ResponseWriter, r *http.Request, adapterID, controlPla
 		if config.RequestBody != "" {
 			req.Header.Set("Content-Type", "application/json")
 		}
+	}
+
+	// Set Basic Auth if configured (applied before custom headers so headers can override)
+	if config.Credentials != nil && config.Credentials.Username != "" {
+		req.SetBasicAuth(config.Credentials.Username, config.Credentials.Password)
 	}
 
 	// Apply any custom headers (these override defaults above)

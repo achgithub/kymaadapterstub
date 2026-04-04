@@ -188,6 +188,9 @@ func (s *MemoryStore) UpdateAdapter(scenarioID, adapterID string, updates models
 		if scenario.Adapters[i].ID == adapterID {
 			scenario.Adapters[i].BehaviorMode = updates.BehaviorMode
 			scenario.Adapters[i].Config = updates.Config
+			if updates.Credentials != nil {
+				scenario.Adapters[i].Credentials = updates.Credentials
+			}
 			scenario.UpdatedAt = time.Now()
 			return &scenario.Adapters[i], nil
 		}
