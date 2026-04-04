@@ -178,6 +178,7 @@ async function createAdapter() {
         config = {
             files,
             auth_mode: behaviorMode === 'failure' ? 'failure' : 'success',
+            ssh_public_key: document.getElementById('sftpPublicKey').value.trim(),
         };
     } else if (type === 'OData') {
         config = {
@@ -317,6 +318,11 @@ function editAdapter(adapterId) {
             : '';
         configHtml = `
             ${fingerprintHtml}
+            <div class="mb-3">
+                <label class="form-label">Authorized Public Key <span class="text-muted fw-normal">(optional)</span></label>
+                <textarea class="form-control font-monospace" id="editSftpPublicKey" rows="2" placeholder="ssh-rsa AAAA... or leave blank to accept any public key">${escapeHtml(c.ssh_public_key || '')}</textarea>
+                <small class="form-text text-muted">Paste CPI's SSH public key in authorized_keys format. If blank, any public key is accepted.</small>
+            </div>
             <div class="mb-3">
                 <label class="form-label">Files</label>
                 <div id="editFilesList">${files}</div>
@@ -486,6 +492,7 @@ async function updateAdapter() {
         });
         config.files = files;
         config.auth_mode = behaviorMode === 'failure' ? 'failure' : 'success';
+        config.ssh_public_key = (document.getElementById('editSftpPublicKey')?.value || '').trim();
     } else if (adapter.type === 'SOAP' || adapter.type === 'XI') {
         config.status_code = parseInt(document.getElementById('editStatusCode').value);
         config.response_body = document.getElementById('editBody').value;

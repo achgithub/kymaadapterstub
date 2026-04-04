@@ -10,8 +10,9 @@ type AdapterConfig struct {
 	// SFTP specific
 	Files                []FileConfig `json:"files"`
 	AuthMode             string       `json:"auth_mode"`              // "success", "failure"
-	SSHHostKey           string       `json:"ssh_host_key"`           // PEM-encoded RSA private key
-	SSHHostKeyFingerprint string      `json:"ssh_host_key_fingerprint"` // SHA256 fingerprint for display
+	SSHHostKey            string       `json:"ssh_host_key"`            // PEM-encoded RSA private key
+	SSHHostKeyFingerprint string       `json:"ssh_host_key_fingerprint"` // SHA256 fingerprint for display
+	SSHPublicKey          string       `json:"ssh_public_key"`           // authorized_keys format; if empty, accept any public key
 
 	// SOAP/XI specific
 	SoapVersion string `json:"soap_version"` // "1.1" or "1.2"
