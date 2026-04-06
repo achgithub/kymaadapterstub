@@ -54,6 +54,21 @@ var localAdapterIDs = map[string]string{
 	"SFTP":        "local-sftp",
 }
 
+// localComposeService maps adapter type to its docker-compose service name.
+var localComposeService = map[string]string{
+	"REST":        "rest-adapter",
+	"OData":       "odata-adapter",
+	"SOAP":        "soap-adapter",
+	"XI":          "xi-adapter",
+	"AS2":         "as2-adapter",
+	"AS4":         "as4-adapter",
+	"EDIFACT":     "edifact-adapter",
+	"REST-SENDER": "sender-adapter",
+	"SOAP-SENDER": "sender-adapter",
+	"XI-SENDER":   "sender-adapter",
+	"SFTP":        "sftp-adapter",
+}
+
 // localIDToType is the reverse of localAdapterIDs — used to resolve a local-* container ID
 // back to its adapter type so the config endpoint can find a running adapter of that type.
 var localIDToType = map[string]string{
@@ -834,9 +849,9 @@ func (h *Handler) getAdapterLogs(w http.ResponseWriter, r *http.Request, scenari
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		serviceName := localAdapterIDs[adapter.Type]
+		serviceName := localComposeService[adapter.Type]
 		if serviceName == "" {
-			serviceName = strings.ToLower(adapter.Type) + "-adapter"
+			serviceName = strings.ToLower(strings.ReplaceAll(adapter.Type, "-", "")) + "-adapter"
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
