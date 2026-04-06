@@ -54,6 +54,20 @@ var localAdapterIDs = map[string]string{
 	"SFTP":        "local-sftp",
 }
 
+// localIDToType is the reverse of localAdapterIDs — used to resolve a local-* container ID
+// back to its adapter type so the config endpoint can find a running adapter of that type.
+var localIDToType = map[string]string{
+	"local-rest":    "REST",
+	"local-odata":   "OData",
+	"local-soap":    "SOAP",
+	"local-xi":      "XI",
+	"local-as2":     "AS2",
+	"local-as4":     "AS4",
+	"local-edifact": "EDIFACT",
+	"local-sender":  "REST-SENDER", // any sender type; match on prefix below
+	"local-sftp":    "SFTP",
+}
+
 type Handler struct {
 	store           *store.MemoryStore
 	k8sClient       *k8s.Client
@@ -655,48 +669,86 @@ func (h *Handler) HandleAdapterConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find the adapter across all scenarios
 	scenarios, _ := h.store.ListScenarios()
+
+	// In LOCAL_MODE, Docker containers use fixed IDs (local-rest, local-as2, etc.).
+	// If the exact ID isn't found, resolve by adapter type from the running scenario.
+	if localMode {
+		// Try exact match first (user-created scenarios assign these IDs directly)
+		for _, scenario := range scenarios {
+			for _, adapter := range scenario.Adapters {
+				if adapter.ID == adapterID {
+					h.writeAdapterConfig(w, adapter)
+					return
+				}
+			}
+		}
+		// Fall back: resolve local-* ID → adapter type → find any running adapter of that type
+		adapterType := localIDToType[adapterID]
+		if adapterType == "" && strings.HasPrefix(adapterID, "local-sender") {
+			adapterType = "REST-SENDER"
+		}
+		if adapterType != "" {
+			for _, scenario := range scenarios {
+				for _, adapter := range scenario.Adapters {
+					if adapter.Status == "running" &&
+						(adapter.Type == adapterType ||
+							(adapterType == "REST-SENDER" && strings.HasSuffix(adapter.Type, "-SENDER"))) {
+						h.writeAdapterConfig(w, adapter)
+						return
+					}
+				}
+			}
+		}
+		http.Error(w, "Adapter not found", http.StatusNotFound)
+		return
+	}
+
+	// Normal (k8s) mode: exact ID match
 	for _, scenario := range scenarios {
 		for _, adapter := range scenario.Adapters {
 			if adapter.ID == adapterID {
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"id":                      adapter.ID,
-					"name":                    adapter.Name,
-					"type":                    adapter.Type,
-					"behavior_mode":           adapter.BehaviorMode,
-					"status_code":             adapter.Config.StatusCode,
-					"response_body":           adapter.Config.ResponseBody,
-					"response_headers":        adapter.Config.ResponseHeaders,
-					"response_delay_ms":       adapter.Config.ResponseDelayMs,
-					"files":                   adapter.Config.Files,
-					"auth_mode":               adapter.Config.AuthMode,
-					"ssh_host_key":             adapter.Config.SSHHostKey,
-					"ssh_host_key_fingerprint": adapter.Config.SSHHostKeyFingerprint,
-					"ssh_public_key":           adapter.Config.SSHPublicKey,
-					"credentials":              adapter.Credentials,
-					"soap_version":            adapter.Config.SoapVersion,
-					"as2_from":                adapter.Config.AS2From,
-					"as2_to":                  adapter.Config.AS2To,
-					"as4_party_id":            adapter.Config.AS4PartyID,
-					"edi_standard":            adapter.Config.EDIStandard,
-					"edi_sender_id":           adapter.Config.EDISenderID,
-					"edi_receiver_id":         adapter.Config.EDIReceiverID,
-					"target_url":              adapter.Config.TargetURL,
-					"method":                  adapter.Config.Method,
-					"request_body":            adapter.Config.RequestBody,
-					"request_headers":         adapter.Config.RequestHeaders,
-					"csrf_enabled":            adapter.Config.CSRFEnabled,
-					"csrf_fetch_url":          adapter.Config.CSRFFetchURL,
-					"csrf_fetch_method":       adapter.Config.CSRFFetchMethod,
-				})
+				h.writeAdapterConfig(w, adapter)
 				return
 			}
 		}
 	}
 
 	http.Error(w, "Adapter not found", http.StatusNotFound)
+}
+
+func (h *Handler) writeAdapterConfig(w http.ResponseWriter, adapter models.Adapter) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":                       adapter.ID,
+		"name":                     adapter.Name,
+		"type":                     adapter.Type,
+		"behavior_mode":            adapter.BehaviorMode,
+		"status_code":              adapter.Config.StatusCode,
+		"response_body":            adapter.Config.ResponseBody,
+		"response_headers":         adapter.Config.ResponseHeaders,
+		"response_delay_ms":        adapter.Config.ResponseDelayMs,
+		"files":                    adapter.Config.Files,
+		"auth_mode":                adapter.Config.AuthMode,
+		"ssh_host_key":             adapter.Config.SSHHostKey,
+		"ssh_host_key_fingerprint": adapter.Config.SSHHostKeyFingerprint,
+		"ssh_public_key":           adapter.Config.SSHPublicKey,
+		"credentials":              adapter.Credentials,
+		"soap_version":             adapter.Config.SoapVersion,
+		"as2_from":                 adapter.Config.AS2From,
+		"as2_to":                   adapter.Config.AS2To,
+		"as4_party_id":             adapter.Config.AS4PartyID,
+		"edi_standard":             adapter.Config.EDIStandard,
+		"edi_sender_id":            adapter.Config.EDISenderID,
+		"edi_receiver_id":          adapter.Config.EDIReceiverID,
+		"target_url":               adapter.Config.TargetURL,
+		"method":                   adapter.Config.Method,
+		"request_body":             adapter.Config.RequestBody,
+		"request_headers":          adapter.Config.RequestHeaders,
+		"csrf_enabled":             adapter.Config.CSRFEnabled,
+		"csrf_fetch_url":           adapter.Config.CSRFFetchURL,
+		"csrf_fetch_method":        adapter.Config.CSRFFetchMethod,
+	})
 }
 
 // HandleCleanup deletes all orphaned adapter k8s resources
@@ -776,6 +828,23 @@ func (h *Handler) getAdapterLogs(w http.ResponseWriter, r *http.Request, scenari
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if localMode {
+		adapter, err := h.store.GetAdapter(scenarioID, adapterID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		serviceName := localAdapterIDs[adapter.Type]
+		if serviceName == "" {
+			serviceName = strings.ToLower(adapter.Type) + "-adapter"
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"logs": "Pod logs are not available in local Docker mode.\nTo view logs, run:\n  docker compose logs " + serviceName,
+		})
+		return
+	}
+
 	if h.k8sClient == nil {
 		http.Error(w, "Kubernetes client not available", http.StatusServiceUnavailable)
 		return
