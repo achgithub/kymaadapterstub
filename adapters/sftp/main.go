@@ -268,10 +268,14 @@ func main() {
 
 	log.Printf("SFTP Adapter started (ID: %s)", adapterID)
 
-	// Fetch initial config to get the host key
+	// Fetch initial config to get the host key.
+	// Non-fatal: if the control plane isn't ready yet (e.g. Docker startup race),
+	// fall back to a temporary generated key. Per-connection config fetches will
+	// pick up the real config once a scenario is launched.
 	config, err := fetchConfig(adapterID, controlPlaneURL)
 	if err != nil {
-		log.Fatalf("Failed to fetch initial config: %v", err)
+		log.Printf("Warning: failed to fetch initial config: %v — using temporary SSH host key", err)
+		config = &AdapterConfig{}
 	}
 
 	hostKey, err := loadOrGenerateHostKey(config.SSHHostKey)
