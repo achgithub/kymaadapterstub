@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -20,6 +21,38 @@ import (
 	"github.com/andrew/kymaadapterstub/control-plane/store"
 	"golang.org/x/crypto/ssh"
 )
+
+var localMode = os.Getenv("LOCAL_MODE") == "true"
+
+// localAdapterURLs maps adapter type to its fixed localhost URL in LOCAL_MODE.
+var localAdapterURLs = map[string]string{
+	"REST":        "http://localhost:8081",
+	"OData":       "http://localhost:8082",
+	"SOAP":        "http://localhost:8083",
+	"XI":          "http://localhost:8084",
+	"AS2":         "http://localhost:8085",
+	"AS4":         "http://localhost:8086",
+	"EDIFACT":     "http://localhost:8087",
+	"REST-SENDER": "http://localhost:8088",
+	"SOAP-SENDER": "http://localhost:8088",
+	"XI-SENDER":   "http://localhost:8088",
+	"SFTP":        "localhost:2222",
+}
+
+// localAdapterIDs maps adapter type to its fixed container ID in LOCAL_MODE.
+var localAdapterIDs = map[string]string{
+	"REST":        "local-rest",
+	"OData":       "local-odata",
+	"SOAP":        "local-soap",
+	"XI":          "local-xi",
+	"AS2":         "local-as2",
+	"AS4":         "local-as4",
+	"EDIFACT":     "local-edifact",
+	"REST-SENDER": "local-sender",
+	"SOAP-SENDER": "local-sender",
+	"XI-SENDER":   "local-sender",
+	"SFTP":        "local-sftp",
+}
 
 type Handler struct {
 	store           *store.MemoryStore
@@ -250,8 +283,13 @@ func (h *Handler) addAdapter(w http.ResponseWriter, r *http.Request, scenarioID 
 		return
 	}
 
-	// Generate adapter ID
+	// Generate adapter ID (fixed per type in local mode so containers can be pre-started)
 	adapterID := scenarioID + "-" + strings.ToLower(req.Type) + "-" + fmt.Sprintf("%d", time.Now().Unix())
+	if localMode {
+		if id, ok := localAdapterIDs[req.Type]; ok {
+			adapterID = id
+		}
+	}
 
 	// For SFTP adapters, ensure an SSH host key and fingerprint are set
 	if req.Type == "SFTP" {
@@ -395,6 +433,24 @@ func (h *Handler) handleLaunchScenario(w http.ResponseWriter, r *http.Request, s
 		return
 	}
 
+	if localMode {
+		// In local mode skip k8s — adapters run as fixed Docker containers with known ports
+		for i, adapter := range scenario.Adapters {
+			if adapter.Status != "stopped" {
+				continue
+			}
+			url := localAdapterURLs[adapter.Type]
+			h.store.UpdateAdapterStatus(scenarioID, adapter.ID, "running")
+			h.store.UpdateAdapterIngressURL(scenarioID, adapter.ID, url)
+			scenario.Adapters[i].Status = "running"
+			scenario.Adapters[i].IngressURL = url
+		}
+		h.store.UpdateScenarioStatus(scenarioID, "running")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(scenario)
+		return
+	}
+
 	if h.k8sClient == nil {
 		http.Error(w, "Kubernetes client not available", http.StatusInternalServerError)
 		return
@@ -422,7 +478,6 @@ func (h *Handler) handleLaunchScenario(w http.ResponseWriter, r *http.Request, s
 		var adapterURL string
 
 		if adapter.Type == "SFTP" {
-			// Wait for LoadBalancer external hostname
 			hostname, err := h.k8sClient.GetLoadBalancerHostname(h.namespace, adapter.Name)
 			if err != nil {
 				log.Printf("Warning: could not get LoadBalancer hostname for %s: %v", adapter.Name, err)
@@ -431,7 +486,6 @@ func (h *Handler) handleLaunchScenario(w http.ResponseWriter, r *http.Request, s
 				adapterURL = fmt.Sprintf("%s:22", hostname)
 			}
 		} else {
-			// Create APIRule for public access (REST/OData)
 			publicURL, err := h.k8sClient.CreateAdapterAPIRule(h.namespace, adapter)
 			if err != nil {
 				log.Printf("Error creating APIRule for adapter %s: %v", adapter.ID, err)
@@ -442,11 +496,8 @@ func (h *Handler) handleLaunchScenario(w http.ResponseWriter, r *http.Request, s
 			}
 		}
 
-		// Update adapter status and ingress URL
 		h.store.UpdateAdapterStatus(scenarioID, adapter.ID, "running")
 		h.store.UpdateAdapterIngressURL(scenarioID, adapter.ID, adapterURL)
-
-		// Update local scenario reference
 		scenario.Adapters[i].Status = "running"
 		scenario.Adapters[i].IngressURL = adapterURL
 	}
@@ -467,6 +518,21 @@ func (h *Handler) handleStopScenario(w http.ResponseWriter, r *http.Request, sce
 	scenario, err := h.store.GetScenario(scenarioID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	if localMode {
+		// In local mode skip k8s — just mark everything stopped
+		for _, adapter := range scenario.Adapters {
+			if adapter.Status != "running" {
+				continue
+			}
+			h.store.UpdateAdapterStatus(scenarioID, adapter.ID, "stopped")
+		}
+		h.store.UpdateScenarioStatus(scenarioID, "stopped")
+		scenario, _ = h.store.GetScenario(scenarioID)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(scenario)
 		return
 	}
 

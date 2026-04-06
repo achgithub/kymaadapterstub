@@ -1,0 +1,134 @@
+version: "3.9"
+
+# Local development mode — no Kubernetes required.
+# All adapters run as fixed containers with deterministic ports.
+# The control plane uses LOCAL_MODE=true to skip k8s and map adapter types
+# to the fixed localhost ports defined here.
+#
+# Usage:
+#   docker compose up -d
+#   Open http://localhost:8090
+
+services:
+
+  control-plane:
+    image: ghcr.io/achgithub/kymaadapterstub-control-plane:latest
+    ports:
+      - "8090:8080"
+    environment:
+      - LOCAL_MODE=true
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    networks:
+      - adapters
+
+  rest-adapter:
+    image: ghcr.io/achgithub/kymaadapterstub-rest-adapter:latest
+    ports:
+      - "8081:8080"
+    environment:
+      - ADAPTER_ID=local-rest
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    depends_on:
+      - control-plane
+    networks:
+      - adapters
+
+  odata-adapter:
+    image: ghcr.io/achgithub/kymaadapterstub-odata-adapter:latest
+    ports:
+      - "8082:8080"
+    environment:
+      - ADAPTER_ID=local-odata
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    depends_on:
+      - control-plane
+    networks:
+      - adapters
+
+  soap-adapter:
+    image: ghcr.io/achgithub/kymaadapterstub-soap-adapter:latest
+    ports:
+      - "8083:8080"
+    environment:
+      - ADAPTER_ID=local-soap
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    depends_on:
+      - control-plane
+    networks:
+      - adapters
+
+  xi-adapter:
+    image: ghcr.io/achgithub/kymaadapterstub-xi-adapter:latest
+    ports:
+      - "8084:8080"
+    environment:
+      - ADAPTER_ID=local-xi
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    depends_on:
+      - control-plane
+    networks:
+      - adapters
+
+  as2-adapter:
+    image: ghcr.io/achgithub/kymaadapterstub-as2-adapter:latest
+    ports:
+      - "8085:8080"
+    environment:
+      - ADAPTER_ID=local-as2
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    depends_on:
+      - control-plane
+    networks:
+      - adapters
+
+  as4-adapter:
+    image: ghcr.io/achgithub/kymaadapterstub-as4-adapter:latest
+    ports:
+      - "8086:8080"
+    environment:
+      - ADAPTER_ID=local-as4
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    depends_on:
+      - control-plane
+    networks:
+      - adapters
+
+  edifact-adapter:
+    image: ghcr.io/achgithub/kymaadapterstub-edifact-adapter:latest
+    ports:
+      - "8087:8080"
+    environment:
+      - ADAPTER_ID=local-edifact
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    depends_on:
+      - control-plane
+    networks:
+      - adapters
+
+  sender-adapter:
+    image: ghcr.io/achgithub/kymaadapterstub-sender-adapter:latest
+    ports:
+      - "8088:8080"
+    environment:
+      - ADAPTER_ID=local-sender
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    depends_on:
+      - control-plane
+    networks:
+      - adapters
+
+  sftp-adapter:
+    image: ghcr.io/achgithub/kymaadapterstub-sftp-adapter:latest
+    ports:
+      - "2222:22"
+    environment:
+      - ADAPTER_ID=local-sftp
+      - CONTROL_PLANE_URL=http://control-plane:8080
+    depends_on:
+      - control-plane
+    networks:
+      - adapters
+
+networks:
+  adapters:
+    driver: bridge
