@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,6 +44,45 @@ type TriggerResult struct {
 	CSRFToken       string            `json:"csrf_token,omitempty"` // token fetched, for debugging
 }
 
+type contextKey string
+
+const pathAdapterIDKey contextKey = "pathAdapterID"
+
+// resolveAdapterID returns the effective adapter ID for a request.
+// In PATH_PREFIX_MODE the first URL path segment carries the adapter ID;
+// otherwise falls back to the env-var ID used in Kyma deployments.
+func resolveAdapterID(r *http.Request, envID string) string {
+	if id, ok := r.Context().Value(pathAdapterIDKey).(string); ok && id != "" {
+		return id
+	}
+	return envID
+}
+
+// withPathPrefixMiddleware strips the first path segment as the adapter ID and
+// stores it in context. Enables one container to serve multiple scenario adapter
+// instances in LOCAL_MODE (PATH_PREFIX_MODE=true).
+func withPathPrefixMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/health" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)
+		if len(parts) == 0 || parts[0] == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		r2 := r.Clone(context.WithValue(r.Context(), pathAdapterIDKey, parts[0]))
+		if len(parts) > 1 {
+			r2.URL.Path = "/" + parts[1]
+		} else {
+			r2.URL.Path = "/"
+		}
+		r2.URL.RawPath = ""
+		next.ServeHTTP(w, r2)
+	})
+}
+
 func main() {
 	adapterID := os.Getenv("ADAPTER_ID")
 	controlPlaneURL := os.Getenv("CONTROL_PLANE_URL")
@@ -65,8 +105,9 @@ func main() {
 			http.Error(w, "POST required", http.StatusMethodNotAllowed)
 			return
 		}
-		reportActivity(adapterID, controlPlaneURL)
-		handleTrigger(w, r, adapterID, controlPlaneURL)
+		eid := resolveAdapterID(r, adapterID)
+		reportActivity(eid, controlPlaneURL)
+		handleTrigger(w, r, eid, controlPlaneURL)
 	})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +119,7 @@ func main() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
-			"adapter": adapterID,
+			"adapter": resolveAdapterID(r, adapterID),
 			"type":    "sender",
 			"trigger": "POST /trigger",
 		})
@@ -86,7 +127,11 @@ func main() {
 
 	port := ":8080"
 	log.Printf("Sender Adapter listening on %s", port)
-	if err := http.ListenAndServe(port, mux); err != nil {
+	var serverHandler http.Handler = mux
+	if os.Getenv("PATH_PREFIX_MODE") == "true" {
+		serverHandler = withPathPrefixMiddleware(mux)
+	}
+	if err := http.ListenAndServe(port, serverHandler); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
 }

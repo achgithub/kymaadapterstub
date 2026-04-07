@@ -28,6 +28,7 @@ services:
     environment:
       - ADAPTER_ID=local-rest
       - CONTROL_PLANE_URL=http://control-plane:8080
+      - PATH_PREFIX_MODE=true
     depends_on:
       - control-plane
     restart: unless-stopped
@@ -41,6 +42,7 @@ services:
     environment:
       - ADAPTER_ID=local-odata
       - CONTROL_PLANE_URL=http://control-plane:8080
+      - PATH_PREFIX_MODE=true
     depends_on:
       - control-plane
     restart: unless-stopped
@@ -54,6 +56,7 @@ services:
     environment:
       - ADAPTER_ID=local-soap
       - CONTROL_PLANE_URL=http://control-plane:8080
+      - PATH_PREFIX_MODE=true
     depends_on:
       - control-plane
     restart: unless-stopped
@@ -67,6 +70,7 @@ services:
     environment:
       - ADAPTER_ID=local-xi
       - CONTROL_PLANE_URL=http://control-plane:8080
+      - PATH_PREFIX_MODE=true
     depends_on:
       - control-plane
     restart: unless-stopped
@@ -80,6 +84,7 @@ services:
     environment:
       - ADAPTER_ID=local-as2
       - CONTROL_PLANE_URL=http://control-plane:8080
+      - PATH_PREFIX_MODE=true
     depends_on:
       - control-plane
     restart: unless-stopped
@@ -93,6 +98,7 @@ services:
     environment:
       - ADAPTER_ID=local-as4
       - CONTROL_PLANE_URL=http://control-plane:8080
+      - PATH_PREFIX_MODE=true
     depends_on:
       - control-plane
     restart: unless-stopped
@@ -106,6 +112,7 @@ services:
     environment:
       - ADAPTER_ID=local-edifact
       - CONTROL_PLANE_URL=http://control-plane:8080
+      - PATH_PREFIX_MODE=true
     depends_on:
       - control-plane
     restart: unless-stopped
@@ -119,6 +126,7 @@ services:
     environment:
       - ADAPTER_ID=local-sender
       - CONTROL_PLANE_URL=http://control-plane:8080
+      - PATH_PREFIX_MODE=true
     depends_on:
       - control-plane
     restart: unless-stopped

@@ -468,7 +468,7 @@ func (h *Handler) handleLaunchScenario(w http.ResponseWriter, r *http.Request, s
 			if adapter.Status != "stopped" {
 				continue
 			}
-			url := localAdapterURLs[adapter.Type]
+			url := localAdapterURLs[adapter.Type] + "/" + adapter.ID
 			h.store.UpdateAdapterStatus(scenarioID, adapter.ID, "running")
 			h.store.UpdateAdapterIngressURL(scenarioID, adapter.ID, url)
 			scenario.Adapters[i].Status = "running"

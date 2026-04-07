@@ -6,6 +6,7 @@ package main
 // the envelope and returns an AS4 Receipt Signal to acknowledge receipt.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -74,6 +75,45 @@ func soapFault(message string) string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?><env:Envelope xmlns:env="http://www.w3.org/2003/05/soap-envelope"><env:Body><env:Fault><env:Code><env:Value>env:Sender</env:Value></env:Code><env:Reason><env:Text xml:lang="en">%s</env:Text></env:Reason></env:Fault></env:Body></env:Envelope>`, message)
 }
 
+type contextKey string
+
+const pathAdapterIDKey contextKey = "pathAdapterID"
+
+// resolveAdapterID returns the effective adapter ID for a request.
+// In PATH_PREFIX_MODE the first URL path segment carries the adapter ID;
+// otherwise falls back to the env-var ID used in Kyma deployments.
+func resolveAdapterID(r *http.Request, envID string) string {
+	if id, ok := r.Context().Value(pathAdapterIDKey).(string); ok && id != "" {
+		return id
+	}
+	return envID
+}
+
+// withPathPrefixMiddleware strips the first path segment as the adapter ID and
+// stores it in context. Enables one container to serve multiple scenario adapter
+// instances in LOCAL_MODE (PATH_PREFIX_MODE=true).
+func withPathPrefixMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/health" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)
+		if len(parts) == 0 || parts[0] == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		r2 := r.Clone(context.WithValue(r.Context(), pathAdapterIDKey, parts[0]))
+		if len(parts) > 1 {
+			r2.URL.Path = "/" + parts[1]
+		} else {
+			r2.URL.Path = "/"
+		}
+		r2.URL.RawPath = ""
+		next.ServeHTTP(w, r2)
+	})
+}
+
 func main() {
 	adapterID := os.Getenv("ADAPTER_ID")
 	controlPlaneURL := os.Getenv("CONTROL_PLANE_URL")
@@ -93,11 +133,15 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		handleRequest(w, r, adapterID, controlPlaneURL)
+		handleRequest(w, r, resolveAdapterID(r, adapterID), controlPlaneURL)
 	})
 
 	log.Printf("AS4 Adapter listening on :8080")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	var serverHandler http.Handler = mux
+	if os.Getenv("PATH_PREFIX_MODE") == "true" {
+		serverHandler = withPathPrefixMiddleware(mux)
+	}
+	if err := http.ListenAndServe(":8080", serverHandler); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
 }
